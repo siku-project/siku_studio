@@ -104,11 +104,17 @@ local function run(token, kind, bench)
     error(('capture page refused the configuration: %s'):format(tostring(configured.error)), 0)
   end
 
-  Siku.log.debug('studio.debug', 'Capture page configured', {
+  Siku.log.debug('studio.debug', ('Capture page configured, server %s'):format(configured.server and configured.server.reachable and 'reachable' or 'UNREACHABLE'), {
     step = 'configure',
     screen = { width = width, height = height },
+    endpoint = endpoint(),
+    server = configured.server,
     gl = configured.gl,
   })
+
+  if not configured.server or not configured.server.reachable then
+    error(('capture page cannot reach %s: %s'):format(endpoint(), tostring(configured.server and configured.server.error)), 0)
+  end
 
   Session.checkpoint()
 

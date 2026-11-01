@@ -3,6 +3,7 @@
   const PLACEHOLDER = [0, 0, 255, 255];
   const CONCURRENT_UPLOADS = 20;
   const RANDOM_CHUNK = 65536;
+  const HEALTH_TIMEOUT_MS = 3000;
 
   const resource = typeof GetParentResourceName === 'function' ? GetParentResourceName() : 'siku_studio';
   const canvas = document.getElementById('capture');
@@ -347,11 +348,14 @@
   async function upload(kind, key, buffer) {
     const started = performance.now();
     const url = `${config.endpoint}/upload?token=${encodeURIComponent(config.token)}&kind=${encodeURIComponent(kind)}&key=${encodeURIComponent(key)}`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/octet-stream' },
-      body: buffer,
-    });
+    let response;
+
+    try {
+      response = await fetch(url, { method: 'POST', body: new Blob([buffer]) });
+    } catch (error) {
+      throw new Error(`${error.message} (POST ${config.endpoint}/upload)`);
+    }
+
     const body = await response.json().catch(() => ({ ok: false, error: `http ${response.status}` }));
 
     if (!response.ok || !body.ok) {
@@ -359,6 +363,23 @@
     }
 
     return { ms: performance.now() - started, bytes: buffer.byteLength, writeMs: body.writeMs };
+  }
+
+  async function health() {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), HEALTH_TIMEOUT_MS);
+    const started = performance.now();
+
+    try {
+      const response = await fetch(`${config.endpoint}/health`, { method: 'GET', signal: controller.signal });
+      const body = await response.json().catch(() => null);
+
+      return { reachable: true, status: response.status, session: body && body.session ? true : false, ms: performance.now() - started };
+    } catch (error) {
+      return { reachable: false, error: String(error && error.message || error), ms: performance.now() - started };
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   async function webpSupported() {
@@ -457,6 +478,7 @@
       const sample = readSync(2, 2, cropRegion());
 
       return {
+        server: await health(),
         gl: {
           renderer: gl.getParameter(gl.RENDERER),
           version: gl.getParameter(gl.VERSION),
