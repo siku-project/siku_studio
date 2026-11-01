@@ -9,6 +9,7 @@ return {
   studio_status = 'Session %s de %s, lancée il y a %ds.',
   studio_unknown_bench = "Banc inconnu : %s. Choix : %s.",
   studio_in_game = 'Cette commande se lance en jeu.',
+  studio_model_unknown = "Le modèle de ton personnage n'est pas pris en charge par le catalogue.",
   studio_output_missing = 'Dossiers output/ absents de la ressource, voir le Control Center.',
   error_scene_never_focused = "La scène n'a jamais fini de charger.",
   error_subject_never_cloned = "Le clone du personnage n'a jamais été créé.",
