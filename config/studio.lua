@@ -114,10 +114,26 @@ StudioConfig = {
     root = 'output',
   },
 
+  transport = {
+    --- How captures travel from the page to the server. 'event' hands the
+    --- bytes to the client script through a NUI callback, which forwards
+    --- them in a latent net event: the only way that works out of the box,
+    --- because NUI pages are https and the browser refuses plain http to
+    --- the FXServer port. 'http' posts straight to http.endpoint, which
+    --- must then be an https reverse proxy in front of the FXServer port.
+    mode = 'event',
+
+    --- Throughput of the latent events, in bytes per second.
+    bytesPerSecond = 2000000,
+
+    --- Longest wait (ms) for the server to confirm one stored file.
+    ackTimeoutMs = 30000,
+  },
+
   http = {
-    --- Where the game client reaches the FXServer HTTP port, without a
-    --- trailing slash, like 'http://1.2.3.4:30120'. Leave nil to use the
-    --- address the client is connected to.
+    --- Where the page reaches the FXServer HTTP handler in 'http' mode,
+    --- without a trailing slash, like 'https://studio.example.com'. Leave
+    --- nil to use the address the client is connected to, in plain http.
     endpoint = nil,
 
     --- Largest upload accepted, in bytes.
