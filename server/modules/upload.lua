@@ -113,6 +113,7 @@ end
 ---@return table result { ok, error?, path?, bytes?, writeMs? }
 function Studio.store(session, kind, key, body, transport)
   local target <const> = ('%s/%s/%s'):format(StudioConfig.output.root, kind, key)
+  local absolute <const> = ('%s/%s'):format(GetResourcePath(resource), target)
   local started <const> = os.clock()
   local ok <const> = SaveResourceFile(resource, target, body, #body)
   local ms <const> = (os.clock() - started) * 1000
@@ -120,6 +121,7 @@ function Studio.store(session, kind, key, body, transport)
   if not ok then
     Siku.log.error('studio.save_failed', ('%s could not be written'):format(target), {
       path = target,
+      absolutePath = absolute,
       bytes = #body,
       transport = transport,
     }, { outcome = 'failure', source = session.player, entities = actor(session.player) })
@@ -131,6 +133,7 @@ function Studio.store(session, kind, key, body, transport)
 
   Siku.log.debug('studio.saved', ('%s written, %d bytes in %.2f ms'):format(target, #body, ms), {
     path = target,
+    absolutePath = absolute,
     kind = kind,
     key = key,
     bytes = #body,
