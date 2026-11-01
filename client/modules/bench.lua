@@ -316,7 +316,7 @@ end
 ---@return string summary
 function Bench.probe()
   local reply <const> = Nui.request('probe', {
-    key = ('probe/%s.webp'):format(os.date('!%Y%m%d-%H%M%S')),
+    key = ('probe/%d.webp'):format(GetCloudTimeAsInt()),
   }, PROBE_TIMEOUT_MS)
 
   if not reply.ok then
