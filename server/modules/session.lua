@@ -153,10 +153,16 @@ end
 local function start(src, kind, bench)
   local token <const> = Siku.math.randomHex(TOKEN_LENGTH)
 
-  Studio.ensureFolder(StudioConfig.output.root)
+  local missing <const> = Studio.missingFolders(FOLDERS)
 
-  for i = 1, #FOLDERS do
-    Studio.ensureFolder(('%s/%s'):format(StudioConfig.output.root, FOLDERS[i]))
+  if #missing > 0 then
+    Siku.log.error('studio.output_missing', ('Output folders missing, session refused: %s'):format(table.concat(missing, ', ')), {
+      folders = missing,
+      kind = kind,
+      bench = bench,
+    }, { outcome = 'failure', source = src, entities = actor(src) })
+    tell(src, T('studio_output_missing'))
+    return
   end
 
   session = {
@@ -301,9 +307,13 @@ Siku.command.register('studio', function(src, args)
 
   if bench == 'save' then
     start(src, 'bench', bench)
-    CreateThread(function()
-      runSaveBench(src)
-    end)
+
+    if session then
+      CreateThread(function()
+        runSaveBench(src)
+      end)
+    end
+
     return
   end
 
@@ -391,6 +401,14 @@ AddEventHandler('playerDropped', function(reason)
 end)
 
 CreateThread(function()
+  local missing <const> = Studio.missingFolders(FOLDERS)
+
+  if #missing > 0 then
+    Siku.log.error('studio.output_missing', ('Output folders missing at start: %s'):format(table.concat(missing, ', ')), {
+      folders = missing,
+    }, { outcome = 'failure' })
+  end
+
   while true do
     Wait(WATCH_INTERVAL_MS)
 

@@ -49,16 +49,24 @@ local function refuse(res, status, reason, detail)
   reply(res, status, { ok = false, error = reason })
 end
 
---- Creates a folder of the resource, level by level, when it is missing.
----@param path string The path relative to the resource.
-function Studio.ensureFolder(path)
-  local base <const> = GetResourcePath(resource)
-  local current = base
+--- Lists the output folders missing from the resource. Folders ship with
+--- the resource (a .gitkeep in each) because FXServer cannot create one
+--- from Lua: SaveResourceFile needs the parent, and os.createdir crashes
+--- the server when it actually creates the folder.
+---@param folders string[] Folder paths relative to the output root.
+---@return string[] missing The missing folders, relative to the resource.
+function Studio.missingFolders(folders)
+  local missing <const> = {}
 
-  for part in path:gmatch('[^/]+') do
-    current = ('%s/%s'):format(current, part)
-    os.createdir(current)
+  for i = 1, #folders do
+    local path <const> = ('%s/%s'):format(StudioConfig.output.root, folders[i])
+
+    if LoadResourceFile(resource, path .. '/.gitkeep') == nil then
+      missing[#missing + 1] = path
+    end
   end
+
+  return missing
 end
 
 --- Removes a file written under the output folder.

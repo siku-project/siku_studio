@@ -9,6 +9,7 @@ return {
   studio_status = 'Session %s of %s, started %ds ago.',
   studio_unknown_bench = 'Unknown bench: %s. Choices: %s.',
   studio_in_game = 'This command runs in game.',
+  studio_output_missing = 'Output folders missing from the resource, see the Control Center.',
   error_scene_never_focused = 'The scene never finished loading.',
   error_subject_never_cloned = 'The character clone was never created.',
   error_change_never_shown = 'The outfit change never showed on screen.',
