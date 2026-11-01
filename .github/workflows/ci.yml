@@ -29,6 +29,16 @@ jobs:
       - uses: actions/checkout@v5
       - uses: siku-project/siku_ci/actions/manifest@v1
 
+  web:
+    name: web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: for file in web/*.js; do node --check "$file"; done
+
   guard:
     name: guard
     runs-on: ubuntu-latest

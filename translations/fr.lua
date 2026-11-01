@@ -1,1 +1,16 @@
-return {}
+return {
+  studio_title = 'Studio',
+  studio_started = 'Session %s lancée. Échap pour arrêter, progression dans F8 et dans le Control Center.',
+  studio_finished = 'Session %s terminée en %ds.',
+  studio_failed = 'Session %s interrompue : %s',
+  studio_stopped = 'Session arrêtée.',
+  studio_busy = 'Une session est déjà en cours pour %s.',
+  studio_nothing = 'Aucune session en cours.',
+  studio_status = 'Session %s de %s, lancée il y a %ds.',
+  studio_unknown_bench = "Banc inconnu : %s. Choix : %s.",
+  studio_in_game = 'Cette commande se lance en jeu.',
+  error_scene_never_focused = "La scène n'a jamais fini de charger.",
+  error_subject_never_cloned = "Le clone du personnage n'a jamais été créé.",
+  error_change_never_shown = "Le changement de tenue n'est jamais apparu à l'écran.",
+  error_nui_never_answered = "L'interface de capture n'a pas répondu (%s).",
+}
