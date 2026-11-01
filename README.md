@@ -16,3 +16,7 @@ In-game capture studio for FiveM. Create screenshots, GIFs and video clips of cl
 | `/studio stop` | Stops the running session. Escape does the same in game. |
 
 Every session, benchmark result and failure is sent to the Control Center under the `studio.*` events. Settings live in `config/studio.lua`.
+
+## Transport
+
+Captures leave the capture page through a NUI callback and reach the server in a latent net event (`transport.mode = 'event'`). NUI pages are served over https, so the browser refuses a plain http request to the FXServer port. The direct `POST` to the FXServer HTTP handler stays available with `transport.mode = 'http'` and an https reverse proxy configured in `http.endpoint`.
