@@ -345,15 +345,25 @@
     return { buffer, bytes: buffer.byteLength, ms: performance.now() - started };
   }
 
+  function uploadUrl(kind, key) {
+    const params = `kind=${encodeURIComponent(kind)}&key=${encodeURIComponent(key)}`;
+
+    if (config.transport === 'http') {
+      return `${config.endpoint}/upload?token=${encodeURIComponent(config.token)}&${params}`;
+    }
+
+    return `https://${resource}/${PREFIX}upload?${params}`;
+  }
+
   async function upload(kind, key, buffer) {
     const started = performance.now();
-    const url = `${config.endpoint}/upload?token=${encodeURIComponent(config.token)}&kind=${encodeURIComponent(kind)}&key=${encodeURIComponent(key)}`;
+    const url = uploadUrl(kind, key);
     let response;
 
     try {
       response = await fetch(url, { method: 'POST', body: new Blob([buffer]) });
     } catch (error) {
-      throw new Error(`${error.message} (POST ${config.endpoint}/upload)`);
+      throw new Error(`${error.message} (POST ${url.split('?')[0]})`);
     }
 
     const body = await response.json().catch(() => ({ ok: false, error: `http ${response.status}` }));
@@ -362,10 +372,14 @@
       throw new Error(body.error || `http ${response.status}`);
     }
 
-    return { ms: performance.now() - started, bytes: buffer.byteLength, writeMs: body.writeMs };
+    return { ms: performance.now() - started, bytes: buffer.byteLength, writeMs: body.writeMs, transferMs: body.transferMs };
   }
 
   async function health() {
+    if (config.transport !== 'http') {
+      return { reachable: true, transport: config.transport };
+    }
+
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), HEALTH_TIMEOUT_MS);
     const started = performance.now();
@@ -374,9 +388,9 @@
       const response = await fetch(`${config.endpoint}/health`, { method: 'GET', signal: controller.signal });
       const body = await response.json().catch(() => null);
 
-      return { reachable: true, status: response.status, session: body && body.session ? true : false, ms: performance.now() - started };
+      return { reachable: true, transport: 'http', status: response.status, session: body && body.session ? true : false, ms: performance.now() - started };
     } catch (error) {
-      return { reachable: false, error: String(error && error.message || error), ms: performance.now() - started };
+      return { reachable: false, transport: 'http', error: String(error && error.message || error), ms: performance.now() - started };
     } finally {
       clearTimeout(timer);
     }
@@ -462,6 +476,7 @@
     async configure(message) {
       config = {
         token: message.token,
+        transport: message.transport,
         endpoint: message.endpoint,
         screen: message.screen,
         frame: message.frame,

@@ -63,10 +63,12 @@ end
 local function run(token, kind, bench)
   local started <const> = GetGameTimer()
 
-  Siku.log.debug('studio.debug', ('Session %s starting on the client'):format(bench or kind), {
+  Siku.log.debug('studio.debug', ('Session %s starting on the client, transport %s'):format(bench or kind, StudioConfig.transport.mode), {
     step = 'start',
     kind = kind,
     bench = bench,
+    transport = StudioConfig.transport.mode,
+    bytesPerSecond = StudioConfig.transport.bytesPerSecond,
     endpoint = endpoint(),
   })
 
@@ -91,6 +93,7 @@ local function run(token, kind, bench)
   local width <const>, height <const> = GetActiveScreenResolution()
   local configured <const> = Nui.request('configure', {
     token = token,
+    transport = StudioConfig.transport.mode,
     endpoint = endpoint(),
     screen = { width = width, height = height },
     frame = StudioConfig.capture.frame,
