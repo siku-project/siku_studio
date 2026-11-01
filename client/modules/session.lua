@@ -55,6 +55,7 @@ end
 
 local function cleanup()
   Nui.cancelAll()
+  Transport.cancelAll()
   Nui.send('reset')
   Subject.destroy()
   Scene.leave()

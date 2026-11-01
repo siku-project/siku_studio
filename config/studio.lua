@@ -123,8 +123,12 @@ StudioConfig = {
     --- must then be an https reverse proxy in front of the FXServer port.
     mode = 'event',
 
-    --- Throughput of the latent events, in bytes per second.
-    bytesPerSecond = 2000000,
+    --- Throughput of the latent events, in bytes per second. FXServer cuts
+    --- them in fragments of 2047 bytes and accepts 75 fragments per second
+    --- per player, 125 in a burst, and kicks the player above 150. The
+    --- client sends one file at a time; 120000 keeps about 59 fragments
+    --- per second, under the limit with a margin.
+    bytesPerSecond = 120000,
 
     --- Longest wait (ms) for the server to confirm one stored file.
     ackTimeoutMs = 30000,

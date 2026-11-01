@@ -372,7 +372,7 @@
       throw new Error(body.error || `http ${response.status}`);
     }
 
-    return { ms: performance.now() - started, bytes: buffer.byteLength, writeMs: body.writeMs, transferMs: body.transferMs };
+    return { ms: performance.now() - started, bytes: buffer.byteLength, writeMs: body.writeMs, transferMs: body.transferMs, queueMs: body.queueMs };
   }
 
   async function health() {
@@ -688,6 +688,7 @@
       const concurrentMs = performance.now() - concurrentStarted;
       const sequential = stats(sequentialSamples);
       const result = {
+        transport: config.transport,
         count: message.count,
         bytes: message.bytes,
         failures,
@@ -695,7 +696,7 @@
         concurrent: { batch: CONCURRENT_UPLOADS, totalMs: concurrentMs, perSecond: concurrentMs > 0 ? message.count / (concurrentMs / 1000) : 0 },
       };
 
-      result.summary = `${message.count} x ${message.bytes} B: sequential ${result.sequential.averageMs.toFixed(1)} ms each (${result.sequential.perSecond.toFixed(1)}/s), ${CONCURRENT_UPLOADS} at once ${result.concurrent.perSecond.toFixed(1)}/s, ${failures} failures`;
+      result.summary = `${config.transport}: ${message.count} x ${message.bytes} B, sequential ${result.sequential.averageMs.toFixed(1)} ms each (${result.sequential.perSecond.toFixed(1)}/s, ${(result.sequential.perSecond * message.bytes / 1024).toFixed(0)} KB/s), ${CONCURRENT_UPLOADS} handed at once ${result.concurrent.perSecond.toFixed(1)}/s, ${failures} failures`;
 
       return { result };
     },
