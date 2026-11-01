@@ -8,7 +8,11 @@ local CLIENT_BENCHES <const> = { variations = true, readback = true, encode = tr
 local BENCH_NAMES <const> = 'variations, readback, encode, upload, save, full, all'
 local RESULTS_FOLDER <const> = 'bench'
 local CONSOLE_SOURCE <const> = 0
-local FOLDERS <const> = { 'bench', 'bench/upload', 'bench/full', 'bench/save', 'probe' }
+local FOLDERS <const> = { 'bench', 'bench/upload', 'bench/full', 'bench/save', 'probe', 'catalog' }
+
+for i = 1, #StudioConfig.catalog.models do
+  FOLDERS[#FOLDERS + 1] = 'catalog/' .. StudioConfig.catalog.models[i]
+end
 
 local resource <const> = GetCurrentResourceName()
 local session = nil
@@ -107,6 +111,8 @@ local function finish(ok, summary, errorText, stack)
 
   session = nil
 
+  Studio.catalogFlushAll()
+
   local duration <const> = elapsedSeconds(current.startedAt)
   local path <const> = writeResults(current, ok, errorText)
 
@@ -150,7 +156,7 @@ local function finish(ok, summary, errorText, stack)
   tell(current.player, T('studio_failed', current.bench or current.kind, tostring(errorText)))
 end
 
-local function start(src, kind, bench)
+local function start(src, kind, bench, job)
   local token <const> = Siku.math.randomHex(TOKEN_LENGTH)
 
   local missing <const> = Studio.missingFolders(FOLDERS)
@@ -177,17 +183,19 @@ local function start(src, kind, bench)
     writes = { count = 0, bytes = 0, ms = 0, maxMs = 0 },
   }
 
-  Siku.log.info('studio.session_started', ('%s started a %s session%s'):format(GetPlayerName(tostring(src)) or src, kind, bench and (' (' .. bench .. ')') or ''), {
+  Siku.log.info('studio.session_started', ('%s started a %s session%s'):format(GetPlayerName(tostring(src)) or src, kind, bench and (' (' .. bench .. ')') or (job and (' (' .. job.model .. ', ' .. job.target .. ')') or '')), {
     kind = kind,
     bench = bench,
+    job = job and { model = job.model, target = job.target, from = job.from, to = job.to, alreadyDone = job.alreadyDone } or nil,
     component = StudioConfig.bench.component,
     drawables = StudioConfig.bench.drawables,
     size = StudioConfig.capture.size,
     quality = StudioConfig.capture.quality,
+    matte = StudioConfig.capture.matte,
   }, { source = src, entities = actor(src) })
 
-  TriggerClientEvent(START_EVENT, src, token, kind, bench)
-  tell(src, T('studio_started', bench or kind))
+  TriggerClientEvent(START_EVENT, src, token, kind, bench, job)
+  tell(src, T('studio_started', bench or (job and job.target) or kind))
 end
 
 local function runSaveBench(src)
@@ -299,14 +307,40 @@ Siku.command.register('studio', function(src, args)
   end
 
   if action == 'probe' then
-    start(src, 'probe', nil)
+    start(src, 'probe', nil, nil)
+    return
+  end
+
+  if action == 'capture' then
+    local model <const> = Studio.catalogModelOf(src)
+
+    if not model then
+      Siku.log.warn('studio.command_refused', ('%s asked for a capture with a ped model the catalog does not accept'):format(GetPlayerName(tostring(src)) or src), {
+        action = action,
+        reason = 'unknown_model',
+        model = GetEntityModel(GetPlayerPed(src)),
+      }, { outcome = 'denied', source = src, entities = actor(src) })
+      tell(src, T('studio_model_unknown'))
+      return
+    end
+
+    local done <const>, count <const> = Studio.catalogDone(model)
+
+    start(src, 'capture', nil, {
+      model = model,
+      target = (args.target or 'all'):lower(),
+      from = args.from,
+      to = args.to,
+      done = done,
+      alreadyDone = count,
+    })
     return
   end
 
   local bench <const> = (args.target or 'all'):lower()
 
   if bench == 'save' then
-    start(src, 'bench', bench)
+    start(src, 'bench', bench, nil)
 
     if session then
       CreateThread(function()
@@ -327,14 +361,16 @@ Siku.command.register('studio', function(src, args)
     return
   end
 
-  start(src, 'bench', bench)
+  start(src, 'bench', bench, nil)
 end, {
   permission = StudioConfig.permission,
   cooldown = StudioConfig.cooldownMs,
-  description = 'Studio de capture : bench, probe, status, stop.',
+  description = 'Studio de capture : capture, bench, probe, status, stop.',
   arguments = {
-    { name = 'action', type = 'string', choices = { 'bench', 'probe', 'status', 'stop' }, help = 'bench, probe, status ou stop' },
-    { name = 'target', type = 'string', optional = true, help = 'bench : variations, readback, encode, upload, save, full, all' },
+    { name = 'action', type = 'string', choices = { 'capture', 'bench', 'probe', 'status', 'stop' }, help = 'capture, bench, probe, status ou stop' },
+    { name = 'target', type = 'string', optional = true, help = 'capture : all ou une cible (component_11, prop_0, overlay_1, haircolor, eyecolor) ; bench : variations, readback, encode, upload, save, full, all' },
+    { name = 'from', type = 'integer', optional = true, min = 0, help = 'capture : premier index' },
+    { name = 'to', type = 'integer', optional = true, min = 0, help = 'capture : dernier index' },
   },
 })
 
@@ -347,6 +383,15 @@ RegisterNetEvent(REPORT_EVENT, function(token, name, result)
   end
 
   current.results[name] = result
+
+  if name == 'capture' then
+    Studio.catalogFlushAll()
+
+    Siku.log.info('studio.capture', ('Capture %s'):format(tostring(result.summary or 'done')), {
+      result = result,
+    }, { outcome = (result.failed or 0) > 0 and 'partial' or 'success', source = src, entities = actor(src) })
+    return
+  end
 
   Siku.log.info('studio.bench', ('Bench %s: %s'):format(name, tostring(result.summary or 'done')), {
     bench = name,
@@ -390,6 +435,8 @@ AddEventHandler('playerDropped', function(reason)
   local current <const> = session
 
   session = nil
+
+  Studio.catalogFlushAll()
 
   Siku.log.warn('studio.session_abandoned', ('%s left during a %s session: %s'):format(GetPlayerName(tostring(src)) or src, current.bench or current.kind, tostring(reason)), {
     kind = current.kind,

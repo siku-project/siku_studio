@@ -20,6 +20,9 @@
   const jobs = new Map();
   let pipeline = emptyPipeline();
   let flushWaiters = [];
+  let drainWaiters = [];
+  const snaps = new Map();
+  let nextSnap = 1;
   let mainCanvas = null;
   let mainContext = null;
 
@@ -312,20 +315,27 @@
     jobs.clear();
   }
 
-  function encodeInWorker(pixels, width, height, quality, lossless) {
+  function encodeInWorker(pixels, width, height, quality, lossless, second) {
     if (workers.length === 0) {
       return Promise.reject(new Error('no worker'));
     }
 
     const id = nextJob;
     const worker = workers[workerIndex];
+    const transfer = [pixels.buffer];
+    const message = { id, width, height, pixels: pixels.buffer, quality, lossless, format: config.format };
+
+    if (second) {
+      message.second = second.buffer;
+      transfer.push(second.buffer);
+    }
 
     nextJob += 1;
     workerIndex = (workerIndex + 1) % workers.length;
 
     return new Promise((resolve, reject) => {
       jobs.set(id, { resolve, reject });
-      worker.postMessage({ id, width, height, pixels: pixels.buffer, quality, lossless, format: config.format }, [pixels.buffer]);
+      worker.postMessage(message, transfer);
     });
   }
 
@@ -433,6 +443,16 @@
   }
 
   function settlePipeline() {
+    if (pipeline.pending <= (config ? config.backlog : 0)) {
+      const waiters = drainWaiters;
+
+      drainWaiters = [];
+
+      for (const waiter of waiters) {
+        waiter();
+      }
+    }
+
     if (pipeline.pending === 0) {
       const waiters = flushWaiters;
 
@@ -444,10 +464,18 @@
     }
   }
 
-  function enqueue(kind, key, pixels, width, height) {
+  function drained() {
+    if (pipeline.pending <= config.backlog) {
+      return Promise.resolve();
+    }
+
+    return new Promise((resolve) => drainWaiters.push(resolve));
+  }
+
+  function enqueue(kind, key, pixels, width, height, second) {
     pipeline.pending += 1;
 
-    encodeInWorker(pixels, width, height, config.quality, config.lossless)
+    encodeInWorker(pixels, width, height, config.quality, config.lossless, second)
       .then((encoded) => {
         pipeline.encoded += 1;
         pipeline.encodeMs += encoded.ms;
@@ -483,6 +511,7 @@
         size: message.size,
         quality: message.quality,
         lossless: message.lossless,
+        backlog: typeof message.backlog === 'number' ? message.backlog : 0,
         format: 'webp',
       };
 
@@ -509,10 +538,23 @@
     reset() {
       stopWorkers();
       pipeline = emptyPipeline();
+      snaps.clear();
       settlePipeline();
       config = null;
 
       return {};
+    },
+
+    async snap() {
+      const size = config.size;
+      const started = performance.now();
+      const pixels = readSync(size, size, cropRegion());
+      const id = nextSnap;
+
+      nextSnap += 1;
+      snaps.set(id, pixels);
+
+      return { id, readMs: performance.now() - started };
     },
 
     async probe(message) {
@@ -704,12 +746,25 @@
     async capture(message) {
       const size = config.size;
       const started = performance.now();
-      const pixels = await readAsync(size, size, cropRegion());
+      let first = null;
+
+      if (typeof message.first === 'number') {
+        first = snaps.get(message.first);
+        snaps.delete(message.first);
+
+        if (!first) {
+          throw new Error(`unknown snap ${message.first}`);
+        }
+      }
+
+      const pixels = readSync(size, size, cropRegion());
       const readMs = performance.now() - started;
 
-      enqueue(message.kind || 'bench', message.key, pixels, size, size);
+      enqueue(message.kind || 'bench', message.key, first || pixels, size, size, first ? pixels : null);
 
-      return { readMs };
+      await drained();
+
+      return { readMs, pending: pipeline.pending };
     },
 
     async flush() {

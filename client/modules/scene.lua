@@ -2,8 +2,13 @@ Scene = {}
 
 local BONES <const> = {
   SKEL_Head = 31086,
+  SKEL_Neck_1 = 39317,
   SKEL_Spine3 = 24818,
   SKEL_Pelvis = 11816,
+  SKEL_L_Hand = 18905,
+  SKEL_R_Hand = 57005,
+  SKEL_L_Foot = 14201,
+  SKEL_R_Foot = 52301,
 }
 local CONTROL_ESCAPE <const> = 200
 local CONTROL_BACKSPACE <const> = 202
@@ -127,9 +132,16 @@ function Scene.frame(ped, presetName)
 
   local preset <const> = StudioConfig.camera.presets[presetName or StudioConfig.camera.preset] or StudioConfig.camera.presets[StudioConfig.camera.preset]
   local bone <const> = BONES[preset.bone] or BONES.SKEL_Spine3
-  local target <const> = GetPedBoneCoords(ped, bone, 0.0, 0.0, 0.0)
+  local offset <const> = preset.offset or vector3(0.0, 0.0, 0.0)
+  local target <const> = GetPedBoneCoords(ped, bone, offset.x, offset.y, offset.z)
   local forward <const> = GetEntityForwardVector(ped)
-  local coords <const> = target + forward * preset.distance + vector3(0.0, 0.0, preset.height)
+  local yaw <const> = math.rad(preset.yaw or 0.0)
+  local direction <const> = vector3(
+    forward.x * math.cos(yaw) - forward.y * math.sin(yaw),
+    forward.x * math.sin(yaw) + forward.y * math.cos(yaw),
+    0.0
+  )
+  local coords <const> = target + direction * preset.distance + vector3(0.0, 0.0, preset.height)
 
   Siku.camera.setCoords(state.camera, coords)
   Siku.camera.pointAtCoords(state.camera, target)
