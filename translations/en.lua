@@ -1,1 +1,16 @@
-return {}
+return {
+  studio_title = 'Studio',
+  studio_started = 'Session %s started. Escape to stop, progress in F8 and in the Control Center.',
+  studio_finished = 'Session %s finished in %ds.',
+  studio_failed = 'Session %s aborted: %s',
+  studio_stopped = 'Session stopped.',
+  studio_busy = 'A session is already running for %s.',
+  studio_nothing = 'No session running.',
+  studio_status = 'Session %s of %s, started %ds ago.',
+  studio_unknown_bench = 'Unknown bench: %s. Choices: %s.',
+  studio_in_game = 'This command runs in game.',
+  error_scene_never_focused = 'The scene never finished loading.',
+  error_subject_never_cloned = 'The character clone was never created.',
+  error_change_never_shown = 'The outfit change never showed on screen.',
+  error_nui_never_answered = 'The capture interface did not answer (%s).',
+}
