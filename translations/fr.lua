@@ -9,6 +9,7 @@ return {
   studio_status = 'Session %s de %s, lancée il y a %ds.',
   studio_unknown_bench = "Banc inconnu : %s. Choix : %s.",
   studio_in_game = 'Cette commande se lance en jeu.',
+  studio_output_missing = 'Dossiers output/ absents de la ressource, voir le Control Center.',
   error_scene_never_focused = "La scène n'a jamais fini de charger.",
   error_subject_never_cloned = "Le clone du personnage n'a jamais été créé.",
   error_change_never_shown = "Le changement de tenue n'est jamais apparu à l'écran.",
