@@ -15,7 +15,6 @@ shared_scripts {
 }
 
 server_scripts {
-  'server/init.lua',
   'server/modules/*.lua',
 }
 
