@@ -1,0 +1,32 @@
+name: release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    name: package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Assemble package
+        run: |
+          mkdir -p package/siku_studio
+          for entry in client server shared config translations fxmanifest.lua README.md; do
+            if [ -e "$entry" ]; then
+              cp -r "$entry" package/siku_studio/
+            fi
+          done
+          cd package
+          zip -r ../siku_studio.zip siku_studio
+
+      - name: Attach to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" siku_studio.zip --clobber
