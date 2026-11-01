@@ -361,7 +361,7 @@
     let response;
 
     try {
-      response = await fetch(url, { method: 'POST', body: new Blob([buffer]) });
+      response = await fetch(url, { method: 'POST', body: buffer });
     } catch (error) {
       throw new Error(`${error.message} (POST ${url.split('?')[0]})`);
     }
