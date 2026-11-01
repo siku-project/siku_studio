@@ -2,7 +2,7 @@ local UPLOAD_PATH <const> = '/upload'
 local HEALTH_PATH <const> = '/health'
 local UPLOAD_EVENT <const> = 'siku_studio:server:upload'
 local STORED_EVENT <const> = 'siku_studio:client:stored'
-local KINDS <const> = { bench = true, probe = true, capture = true }
+local KINDS <const> = { bench = true, probe = true, catalog = true }
 local KEY_PATTERN <const> = '^[%w_%-/%.]+$'
 local PARENT_PATTERN <const> = '%.%.'
 local KEY_MAX <const> = 200
@@ -60,6 +60,14 @@ local function invalid(kind, key, body)
 
   if type(key) ~= 'string' or #key == 0 or #key > KEY_MAX or not key:match(KEY_PATTERN) or key:find(PARENT_PATTERN) then
     return 'invalid_key', tostring(key)
+  end
+
+  if kind == 'catalog' then
+    local model <const> = key:match('^([^/]+)/[^/]+$')
+
+    if not model or not Studio.catalogAccepts(model) then
+      return 'invalid_model', key
+    end
   end
 
   if type(body) ~= 'string' or #body == 0 then
@@ -130,6 +138,10 @@ function Studio.store(session, kind, key, body, transport)
   end
 
   Studio.recordWrite(#body, ms)
+
+  if kind == 'catalog' then
+    Studio.catalogIndexed(key, #body)
+  end
 
   Siku.log.debug('studio.saved', ('%s written, %d bytes in %.2f ms'):format(target, #body, ms), {
     path = target,

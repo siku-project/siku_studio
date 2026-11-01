@@ -47,16 +47,100 @@ StudioConfig = {
 
   camera = {
     --- Framing presets, relative to a bone of the subject. The camera is
-    --- placed in front of the subject at the given distance and height,
-    --- and points at the bone.
+    --- placed at the given distance from the bone, turned by yaw degrees
+    --- around the subject (0 = facing the subject), raised by height, and
+    --- points at the bone moved by offset (right, forward, up in meters).
     presets = {
-      head = { bone = 'SKEL_Head', distance = 0.9, height = 0.05, fov = 30.0 },
-      bust = { bone = 'SKEL_Spine3', distance = 1.8, height = 0.15, fov = 35.0 },
+      head = { bone = 'SKEL_Head', distance = 0.75, height = 0.03, fov = 25.0 },
+      head_wide = { bone = 'SKEL_Head', distance = 1.0, height = 0.05, fov = 30.0 },
+      eyes = { bone = 'SKEL_Head', distance = 0.4, height = 0.05, fov = 15.0 },
+      mouth = { bone = 'SKEL_Head', distance = 0.45, height = -0.03, fov = 15.0 },
+      neck = { bone = 'SKEL_Neck_1', distance = 0.9, height = 0.0, fov = 25.0 },
+      bust = { bone = 'SKEL_Spine3', distance = 2.0, height = 0.3, fov = 35.0 },
+      bust_bare = { bone = 'SKEL_Spine3', distance = 1.6, height = 0.1, fov = 30.0 },
+      back = { bone = 'SKEL_Spine3', distance = 2.0, height = 0.3, fov = 35.0, yaw = 180.0 },
+      legs = { bone = 'SKEL_Pelvis', distance = 2.4, height = -0.35, fov = 35.0 },
+      shoes = { bone = 'SKEL_L_Foot', distance = 1.1, height = 0.15, fov = 30.0, offset = vector3(0.1, 0.0, 0.0) },
+      wrist = { bone = 'SKEL_L_Hand', distance = 0.5, height = 0.05, fov = 20.0 },
       full = { bone = 'SKEL_Pelvis', distance = 3.6, height = 0.1, fov = 40.0 },
     },
 
     --- The preset used when none is asked.
     preset = 'bust',
+  },
+
+  --- Animation frozen on the subject so every photo shows the same pose,
+  --- and two readings of the same frame match pixel for pixel. Set to
+  --- false to leave the subject on its idle animation.
+  pose = {
+    dict = 'anim@mp_corona_idles@male_a@idle_a',
+    anim = 'idle_a',
+    time = 0.3,
+  },
+
+  catalog = {
+    --- Ped models the catalog accepts. Each one has its folder under
+    --- output/catalog, shipped with the resource.
+    models = { 'mp_m_freemode_01', 'mp_f_freemode_01' },
+
+    --- Components set to their naked drawable while photographing skin
+    --- overlays, per model folder: { [component] = drawable }.
+    bare = {
+      mp_m_freemode_01 = { [3] = 15, [8] = 15, [11] = 15 },
+      mp_f_freemode_01 = { [3] = 15, [8] = 15, [11] = 15 },
+    },
+
+    --- Textures photographed per drawable, 0 for all of them.
+    textures = 0,
+
+    --- Colour applied to coloured overlays (beard, eyebrows, makeup...)
+    --- while photographing their shapes.
+    overlayColor = 0,
+
+    --- Number of eye colours the game offers.
+    eyeColors = 32,
+
+    --- Photos handed to the page before the capture loop waits for the
+    --- upload queue to drain a little.
+    backlog = 8,
+
+    --- Everything photographed, in order. kind: component, prop, overlay,
+    --- haircolor, eyecolor. preset: a camera preset. bare: strip the torso
+    --- first. color: overlays taking a colour (1 hair colours, 2 makeup).
+    targets = {
+      { id = 'component_0', kind = 'component', index = 0, label = 'Face', preset = 'head' },
+      { id = 'component_1', kind = 'component', index = 1, label = 'Mask', preset = 'head_wide' },
+      { id = 'component_2', kind = 'component', index = 2, label = 'Hair', preset = 'head_wide' },
+      { id = 'component_3', kind = 'component', index = 3, label = 'Torso', preset = 'bust' },
+      { id = 'component_4', kind = 'component', index = 4, label = 'Legs', preset = 'legs' },
+      { id = 'component_5', kind = 'component', index = 5, label = 'Bag', preset = 'back' },
+      { id = 'component_6', kind = 'component', index = 6, label = 'Shoes', preset = 'shoes' },
+      { id = 'component_7', kind = 'component', index = 7, label = 'Accessory', preset = 'neck' },
+      { id = 'component_8', kind = 'component', index = 8, label = 'Undershirt', preset = 'bust' },
+      { id = 'component_9', kind = 'component', index = 9, label = 'Armor', preset = 'bust' },
+      { id = 'component_10', kind = 'component', index = 10, label = 'Decal', preset = 'bust' },
+      { id = 'component_11', kind = 'component', index = 11, label = 'Top', preset = 'bust' },
+      { id = 'prop_0', kind = 'prop', index = 0, label = 'Hat', preset = 'head_wide' },
+      { id = 'prop_1', kind = 'prop', index = 1, label = 'Glasses', preset = 'head' },
+      { id = 'prop_2', kind = 'prop', index = 2, label = 'Ear', preset = 'head' },
+      { id = 'prop_6', kind = 'prop', index = 6, label = 'Watch', preset = 'wrist' },
+      { id = 'prop_7', kind = 'prop', index = 7, label = 'Bracelet', preset = 'wrist' },
+      { id = 'overlay_0', kind = 'overlay', index = 0, label = 'Blemishes', preset = 'head' },
+      { id = 'overlay_1', kind = 'overlay', index = 1, label = 'Facial hair', preset = 'head', color = 1 },
+      { id = 'overlay_2', kind = 'overlay', index = 2, label = 'Eyebrows', preset = 'head', color = 1 },
+      { id = 'overlay_3', kind = 'overlay', index = 3, label = 'Ageing', preset = 'head' },
+      { id = 'overlay_4', kind = 'overlay', index = 4, label = 'Makeup', preset = 'head', color = 2 },
+      { id = 'overlay_5', kind = 'overlay', index = 5, label = 'Blush', preset = 'head', color = 2 },
+      { id = 'overlay_6', kind = 'overlay', index = 6, label = 'Complexion', preset = 'head' },
+      { id = 'overlay_7', kind = 'overlay', index = 7, label = 'Sun damage', preset = 'head' },
+      { id = 'overlay_8', kind = 'overlay', index = 8, label = 'Lipstick', preset = 'mouth', color = 2 },
+      { id = 'overlay_9', kind = 'overlay', index = 9, label = 'Moles', preset = 'head' },
+      { id = 'overlay_10', kind = 'overlay', index = 10, label = 'Chest hair', preset = 'bust_bare', color = 1, bare = true },
+      { id = 'overlay_11', kind = 'overlay', index = 11, label = 'Body blemishes', preset = 'bust_bare', bare = true },
+      { id = 'overlay_12', kind = 'overlay', index = 12, label = 'Extra body blemishes', preset = 'bust_bare', bare = true },
+      { id = 'haircolor', kind = 'haircolor', label = 'Hair colour', preset = 'head_wide' },
+      { id = 'eyecolor', kind = 'eyecolor', label = 'Eye colour', preset = 'eyes' },
+    },
   },
 
   capture = {
@@ -72,6 +156,12 @@ StudioConfig = {
 
     --- Frames rendered after a change of subject before reading the screen.
     settleFrames = 2,
+
+    --- How the subject is cut from the background. 'double' photographs
+    --- every item twice, on the green then the magenta background, and
+    --- computes an exact alpha from the difference. 'none' keeps the
+    --- background.
+    matte = 'double',
 
     --- Encoding workers running in the interface, in parallel of the captures.
     workers = 3,

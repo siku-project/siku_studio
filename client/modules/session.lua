@@ -61,7 +61,7 @@ local function cleanup()
   Scene.leave()
 end
 
-local function run(token, kind, bench)
+local function run(token, kind, bench, job)
   local started <const> = GetGameTimer()
 
   Siku.log.debug('studio.debug', ('Session %s starting on the client, transport %s'):format(bench or kind, StudioConfig.transport.mode), {
@@ -102,6 +102,7 @@ local function run(token, kind, bench)
     quality = StudioConfig.capture.quality,
     lossless = StudioConfig.capture.lossless,
     workers = StudioConfig.capture.workers,
+    backlog = StudioConfig.catalog.backlog,
   }, CONFIGURE_TIMEOUT_MS)
 
   if not configured.ok then
@@ -126,6 +127,8 @@ local function run(token, kind, bench)
 
   if kind == 'probe' then
     summary = Bench.probe()
+  elseif kind == 'capture' then
+    summary = Catalog.run(job)
   elseif bench == 'all' then
     summary = Bench.all()
   else
@@ -158,7 +161,7 @@ function Session.stop(reason)
   Nui.cancelAll()
 end
 
-RegisterNetEvent(START_EVENT, function(token, kind, bench)
+RegisterNetEvent(START_EVENT, function(token, kind, bench, job)
   if state then
     Siku.log.warn('studio.command_refused', 'Start received while a session is already running on this client', {
       reason = 'client_busy',
@@ -173,7 +176,7 @@ RegisterNetEvent(START_EVENT, function(token, kind, bench)
   CreateThread(function()
     local ok <const>, result <const> = xpcall(run, function(err)
       return { message = tostring(err), stack = debug.traceback(tostring(err), 2) }
-    end, token, kind, bench)
+    end, token, kind, bench, job)
 
     local current <const> = state
 
