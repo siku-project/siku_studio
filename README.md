@@ -22,6 +22,10 @@ Every session, benchmark result and failure is sent to the Control Center under 
 
 The targets, their camera framing and the frozen pose live in `config/studio.lua`. The subject is a clone of the player, so the catalog is made for the player's ped model, `mp_m_freemode_01` or `mp_f_freemode_01`. Each item is photographed on a green then a magenta background, and the two readings give an exact alpha: the WebP files are transparent, hair and glasses included.
 
+## CDN
+
+Every photo goes to the Siku CDN: `cdn.url` and `cdn.folder` in `config/studio.lua` name the destination, and the API key comes from the convar `siku_studio_cdn_key` set in `server.cfg` (`set siku_studio_cdn_key "cdn_…"`, a key with the write permission on that folder). Photos are named `1.webp`, `2.webp`… in the order they are taken and each session replaces the photos of the previous one; the catalog index is sent next to them as `<model>.index.json` and maps every number to its item. Without a key the photos stay on disk under `output/`, as before. Bench files always stay on disk.
+
 ## Transport
 
 Captures leave the capture page through a NUI callback and reach the server in a latent net event (`transport.mode = 'event'`). NUI pages are served over https, so the browser refuses a plain http request to the FXServer port. The direct `POST` to the FXServer HTTP handler stays available with `transport.mode = 'http'` and an https reverse proxy configured in `http.endpoint`.

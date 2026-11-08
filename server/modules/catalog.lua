@@ -59,7 +59,9 @@ function Studio.catalogModelOf(src)
   return nil
 end
 
---- The keys already photographed for a model, as { [key] = true }.
+--- The keys already photographed for a model, as { [key] = true }. Empty
+--- when photos go to the CDN with numbered names: every session shoots the
+--- whole target again and replaces the previous photos.
 ---@param model string
 ---@return table done
 ---@return number count
@@ -67,6 +69,10 @@ function Studio.catalogDone(model)
   local catalog <const> = load(model)
   local done <const> = {}
   local count = 0
+
+  if Studio.cdnEnabled() and StudioConfig.cdn.numbered then
+    return done, count
+  end
 
   for file in pairs(catalog.entries) do
     done[('%s/%s'):format(model, file)] = true
@@ -91,6 +97,20 @@ function Studio.catalogFlush(model)
     entries = catalog.entries,
   })
 
+  if Studio.cdnEnabled() then
+    local result <const> = Studio.cdnPut(('%s.index.json'):format(model), payload)
+
+    if not result.ok then
+      Siku.log.error('studio.cdn_failed', ('Catalog index of %s could not be sent to the CDN: %s'):format(model, result.error), {
+        name = ('%s.index.json'):format(model),
+        bytes = #payload,
+        status = result.status,
+        reason = result.error,
+        detail = result.detail,
+      }, { outcome = 'failure' })
+    end
+  end
+
   if SaveResourceFile(resource, indexPath(model), payload, #payload) then
     catalog.dirty = 0
     return
@@ -113,7 +133,8 @@ end
 --- Records one stored catalog photo in the index of its model.
 ---@param key string The key, as <model>/<file>.
 ---@param bytes number
-function Studio.catalogIndexed(key, bytes)
+---@param cdn table|nil { name, id, url } when the photo went to the CDN.
+function Studio.catalogIndexed(key, bytes, cdn)
   local model <const>, file <const> = key:match('^([^/]+)/([^/]+)$')
 
   if not model or not Studio.catalogAccepts(model) then
@@ -122,7 +143,7 @@ function Studio.catalogIndexed(key, bytes)
 
   local catalog <const> = load(model)
 
-  catalog.entries[file] = { bytes = bytes, at = os.time() }
+  catalog.entries[file] = { bytes = bytes, at = os.time(), cdn = cdn }
   catalog.dirty = catalog.dirty + 1
 
   if catalog.dirty >= FLUSH_EVERY then

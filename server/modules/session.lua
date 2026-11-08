@@ -181,7 +181,16 @@ local function start(src, kind, bench, job)
     updatedAt = GetGameTimer(),
     results = {},
     writes = { count = 0, bytes = 0, ms = 0, maxMs = 0 },
+    photos = 0,
   }
+
+  if kind ~= 'bench' and not Studio.cdnEnabled() then
+    Siku.log.warn('studio.cdn_disabled', ('No API key in convar %s: photos stay on disk under %s'):format(StudioConfig.cdn.keyConvar, StudioConfig.output.root), {
+      convar = StudioConfig.cdn.keyConvar,
+      url = StudioConfig.cdn.url,
+      folder = StudioConfig.cdn.folder,
+    }, { outcome = 'partial', source = src, entities = actor(src) })
+  end
 
   Siku.log.info('studio.session_started', ('%s started a %s session%s'):format(GetPlayerName(tostring(src)) or src, kind, bench and (' (' .. bench .. ')') or (job and (' (' .. job.model .. ', ' .. job.target .. ')') or '')), {
     kind = kind,

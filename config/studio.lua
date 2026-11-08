@@ -204,6 +204,30 @@ StudioConfig = {
     root = 'output',
   },
 
+  cdn = {
+    --- Where every photo goes: the Siku CDN. The API key is read from the
+    --- convar below, set in server.cfg (`set siku_studio_cdn_key "cdn_…"`),
+    --- never from this file. Without a key the photos stay on disk under
+    --- output/.
+    url = 'https://cdn.heliony.com',
+
+    --- Folder of the CDN that receives the photos (its id or its path).
+    folder = '01a1bc58-a574-7e63-98e1-03fb1dd489a9',
+
+    --- Convar holding the API key. The key needs the write permission on
+    --- the folder above.
+    keyConvar = 'siku_studio_cdn_key',
+
+    --- Photos are named 1.webp, 2.webp… in the order they are taken, and a
+    --- new session replaces the photos of the previous one. The catalog
+    --- index.json travels with them and maps each number to its item.
+    numbered = true,
+    overwrite = true,
+
+    --- Longest wait (ms) for the CDN to confirm one photo.
+    timeoutMs = 30000,
+  },
+
   transport = {
     --- How captures travel from the page to the server. 'event' hands the
     --- bytes to the client script through a NUI callback, which forwards
