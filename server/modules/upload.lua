@@ -112,14 +112,73 @@ function Studio.remove(path)
   return os.remove(('%s/%s'):format(GetResourcePath(resource), path)) == true
 end
 
---- Writes one capture of the running session under the output folder.
+--- Sends one photo of the running session to the CDN folder. Photos are
+--- numbered in the order they arrive and replace the ones of the previous
+--- session; the catalog index remembers which item each number shows.
 ---@param session table The running session.
----@param kind string The output kind: bench, probe or capture.
+---@param kind string The output kind: probe or catalog.
+---@param key string The key the page gave, kept in the index.
+---@param body string The file bytes.
+---@param transport string Who brought the bytes: http or event, for the logs.
+---@return table result { ok, error?, path?, bytes?, writeMs? }
+local function storeOnCdn(session, kind, key, body, transport)
+  session.photos = (session.photos or 0) + 1
+
+  local extension <const> = key:match('%.(%w+)$') or 'webp'
+  local name <const> = StudioConfig.cdn.numbered and ('%d.%s'):format(session.photos, extension) or key:match('([^/]+)$')
+  local started <const> = os.clock()
+  local result <const> = Studio.cdnPut(name, body)
+  local ms <const> = (os.clock() - started) * 1000
+
+  if not result.ok then
+    Siku.log.error('studio.cdn_failed', ('%s could not be sent to the CDN: %s'):format(name, result.error), {
+      name = name,
+      key = key,
+      kind = kind,
+      bytes = #body,
+      status = result.status,
+      reason = result.error,
+      detail = result.detail,
+      transport = transport,
+    }, { outcome = 'failure', source = session.player, entities = actor(session.player) })
+
+    return { ok = false, error = 'cdn_failed' }
+  end
+
+  Studio.recordWrite(#body, ms)
+
+  if kind == 'catalog' then
+    Studio.catalogIndexed(key, #body, { name = name, id = result.id, url = result.url })
+  end
+
+  Siku.log.debug('studio.cdn_stored', ('%s sent to the CDN as %s, %d bytes in %.0f ms'):format(key, name, #body, ms), {
+    name = name,
+    key = key,
+    kind = kind,
+    id = result.id,
+    url = result.url,
+    bytes = #body,
+    sendMs = ms,
+    transport = transport,
+  }, { source = session.player, entities = actor(session.player) })
+
+  return { ok = true, path = result.url, bytes = #body, writeMs = ms }
+end
+
+--- Writes one capture of the running session: on the CDN when it is
+--- configured, under the output folder otherwise. Bench files always stay
+--- on disk, they are not photos.
+---@param session table The running session.
+---@param kind string The output kind: bench, probe or catalog.
 ---@param key string The file path under the kind folder.
 ---@param body string The file bytes.
 ---@param transport string Who brought the bytes: http or event, for the logs.
 ---@return table result { ok, error?, path?, bytes?, writeMs? }
 function Studio.store(session, kind, key, body, transport)
+  if kind ~= 'bench' and Studio.cdnEnabled() then
+    return storeOnCdn(session, kind, key, body, transport)
+  end
+
   local target <const> = ('%s/%s/%s'):format(StudioConfig.output.root, kind, key)
   local absolute <const> = ('%s/%s'):format(GetResourcePath(resource), target)
   local started <const> = os.clock()
@@ -140,7 +199,7 @@ function Studio.store(session, kind, key, body, transport)
   Studio.recordWrite(#body, ms)
 
   if kind == 'catalog' then
-    Studio.catalogIndexed(key, #body)
+    Studio.catalogIndexed(key, #body, nil)
   end
 
   Siku.log.debug('studio.saved', ('%s written, %d bytes in %.2f ms'):format(target, #body, ms), {
@@ -216,8 +275,10 @@ SetHttpHandler(function(req, res)
       return
     end
 
-    local result <const> = Studio.store(session, params.kind, params.key, body, 'http')
+    Citizen.CreateThreadNow(function()
+      local result <const> = Studio.store(session, params.kind, params.key, body, 'http')
 
-    reply(res, result.ok and 200 or 500, result)
+      reply(res, result.ok and 200 or 500, result)
+    end)
   end, 'binary')
 end)
