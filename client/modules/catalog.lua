@@ -317,6 +317,10 @@ function Catalog.run(job)
         end
       end
 
+      if target.hide then
+        Subject.hide(target.hide, StudioConfig.catalog.hidden[job.model] or {})
+      end
+
       Scene.frame(Subject.ped(), target.preset)
       settle()
 
