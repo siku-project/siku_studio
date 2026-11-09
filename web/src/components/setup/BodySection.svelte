@@ -1,10 +1,17 @@
 <script lang="ts">
   import { Divider, Switch } from '@siku/ui'
-  import { m } from '@/lib/i18n.svelte'
+  import { m, tr, type MessageKey } from '@/lib/i18n.svelte'
   import { store } from '@/lib/studio/store.svelte'
+  import type { PartInfo } from '@/lib/studio/types'
 
   const components = $derived(store.parts.filter((part) => part.kind === 'component'))
   const props = $derived(store.parts.filter((part) => part.kind === 'prop'))
+
+  const labelOf = (part: PartInfo): string => {
+    const key = `part_${part.kind}_${part.index}` as MessageKey
+
+    return key in m ? tr(key) : part.label
+  }
 </script>
 
 <section class="flex flex-col gap-3">
@@ -13,7 +20,7 @@
   <div class="flex flex-col gap-2">
     {#each components as part (part.index)}
       <Switch
-        label={part.label}
+        label={labelOf(part)}
         description={part.worn ? undefined : m.setup_part_bare()}
         checked={part.visible}
         onchange={(value) => store.togglePart(part, value)}
@@ -24,7 +31,7 @@
   <div class="flex flex-col gap-2">
     {#each props as part (part.index)}
       <Switch
-        label={part.label}
+        label={labelOf(part)}
         description={part.worn ? undefined : m.setup_part_none()}
         disabled={!part.worn}
         checked={part.visible && part.worn}
