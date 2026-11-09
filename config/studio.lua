@@ -81,6 +81,7 @@ StudioConfig = {
       prop_2 = { anchor = vector3(-0.015, 0.775, 0.655), fov = 25.0 },
       prop_6 = { anchor = vector3(-0.257, 0.604, -0.068), fov = 50.0 },
       prop_7 = { anchor = vector3(0.123, 0.674, -0.008), fov = 44.0 },
+      component_7 = { anchor = vector3(-0.076, 0.899, 0.356), fov = 50.0 },
     },
 
     --- A preset can also be written as `{ anchor = vector3(right, forward,
@@ -174,7 +175,7 @@ StudioConfig = {
       { id = 'component_4', kind = 'component', index = 4, label = 'Legs', preset = 'component_4', hide = { components = { 1, 2, 3, 5, 6, 7, 8, 9, 10, 11 }, props = { 0 } } },
       { id = 'component_5', kind = 'component', index = 5, label = 'Bag', preset = 'back' },
       { id = 'component_6', kind = 'component', index = 6, label = 'Shoes', preset = 'component_6', hide = { components = { 1, 2, 3, 4, 5, 7, 8, 9, 10, 11 }, props = { 0 } } },
-      { id = 'component_7', kind = 'component', index = 7, label = 'Accessory', preset = 'neck' },
+      { id = 'component_7', kind = 'component', index = 7, label = 'Accessory', preset = 'component_7', hide = { components = { 1, 2, 3, 4, 5, 6, 8, 9, 10, 11 }, props = { 0 } } },
       { id = 'component_8', kind = 'component', index = 8, label = 'Undershirt', preset = 'component_8', hide = { components = { 1, 2, 3, 5, 6, 7, 9, 10, 11 }, props = { 0 } } },
       { id = 'component_9', kind = 'component', index = 9, label = 'Armor', preset = 'bust' },
       { id = 'component_10', kind = 'component', index = 10, label = 'Decal', preset = 'bust' },
