@@ -80,6 +80,7 @@ StudioConfig = {
       prop_1 = { anchor = vector3(-0.045, 0.775, 0.655), fov = 25.0 },
       prop_2 = { anchor = vector3(-0.015, 0.775, 0.655), fov = 25.0 },
       prop_6 = { anchor = vector3(-0.257, 0.604, -0.068), fov = 50.0 },
+      prop_7 = { anchor = vector3(0.123, 0.674, -0.008), fov = 44.0 },
     },
 
     --- A preset can also be written as `{ anchor = vector3(right, forward,
@@ -182,7 +183,7 @@ StudioConfig = {
       { id = 'prop_1', kind = 'prop', index = 1, label = 'Glasses', preset = 'prop_1', hide = { components = { 1, 2, 4, 5, 6, 7, 8, 9, 10, 11 }, props = { 0 } } },
       { id = 'prop_2', kind = 'prop', index = 2, label = 'Ear', preset = 'prop_2', hide = { components = { 1, 2, 4, 5, 6, 7, 8, 9, 10, 11 }, props = { 0 } } },
       { id = 'prop_6', kind = 'prop', index = 6, label = 'Watch', preset = 'prop_6', hide = { components = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 }, props = { 0 } } },
-      { id = 'prop_7', kind = 'prop', index = 7, label = 'Bracelet', preset = 'wrist' },
+      { id = 'prop_7', kind = 'prop', index = 7, label = 'Bracelet', preset = 'prop_7', hide = { components = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 }, props = { 0 } } },
       { id = 'overlay_0', kind = 'overlay', index = 0, label = 'Blemishes', preset = 'head' },
       { id = 'overlay_1', kind = 'overlay', index = 1, label = 'Facial hair', preset = 'overlay_1', color = 1, hide = { components = { 1, 4, 5, 6, 7, 8, 9, 10, 11 }, props = { 0 } } },
       { id = 'overlay_2', kind = 'overlay', index = 2, label = 'Eyebrows', preset = 'overlay_2', color = 1, hide = { components = { 1, 4, 5, 6, 7, 8, 9, 10, 11 }, props = { 0 } } },
