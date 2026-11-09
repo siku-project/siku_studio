@@ -8,6 +8,7 @@ local COMPONENTS <const> = 12
 local PROPS <const> = { 0, 1, 2, 6, 7 }
 local OVERLAYS <const> = 13
 local OVERLAY_OPACITY <const> = 1.0
+local COLORED_OVERLAYS <const> = { [1] = 1, [2] = 1, [4] = 2, [5] = 2, [8] = 2, [10] = 1 }
 local SET_PED_PRELOAD_PROP_DATA <const> = 0x2B16A3BFF1FBCE49
 local HAS_PED_PRELOAD_PROP_DATA_FINISHED <const> = 0x784002A632822099
 local RELEASE_PED_PRELOAD_PROP_DATA <const> = 0xF79F9DEF0AADE61A
@@ -60,8 +61,32 @@ local function pose()
   SetEntityAnimSpeed(ped, config.dict, config.anim, 0.0)
 end
 
+local function neutralize()
+  local colors <const> = StudioConfig.catalog.baseColors
+
+  if not colors then
+    return
+  end
+
+  if colors.hair then
+    SetPedHairColor(ped, colors.hair, colors.hair)
+  end
+
+  if colors.overlays then
+    for overlay, colorType in pairs(COLORED_OVERLAYS) do
+      local ok <const>, value <const>, _, _, _, opacity <const> = GetPedHeadOverlayData(ped, overlay)
+
+      if ok and value ~= 255 then
+        SetPedHeadOverlay(ped, overlay, value, opacity)
+        SetPedHeadOverlayColor(ped, overlay, colorType, colors.overlays, colors.overlays)
+      end
+    end
+  end
+end
+
 --- Clones the player into the studio, frozen, facing the camera, in a
---- fixed pose, and remembers its look so it can be restored.
+--- fixed pose, in the studio's base colours, and remembers that look so
+--- it can be restored between two targets.
 ---@return number ped The clone handle.
 function Subject.create()
   if ped and DoesEntityExist(ped) then
@@ -96,6 +121,8 @@ function Subject.create()
   ClearPedTasksImmediately(ped)
   SetEntityVisible(ped, true, false)
   SetEntityAlpha(ped, 255, false)
+
+  neutralize()
 
   original = remember()
 
