@@ -17,7 +17,9 @@ let open = $state(false)
 let model = $state('')
 let targets = $state<TargetInfo[]>([])
 let parts = $state<PartInfo[]>([])
-let camera = $state<Camera>({ x: 0, y: 0, z: 0, fov: 30 })
+const DEFAULT_CAMERA: Camera = { x: 0, y: 0, z: 0, fov: 30, turn: 0 }
+
+let camera = $state<Camera>({ ...DEFAULT_CAMERA })
 let target = $state('')
 let index = $state(0)
 let step = $state<StepSize>('normal')
@@ -82,6 +84,9 @@ export const store = {
   get step(): StepSize {
     return step
   },
+  get fromBehind(): boolean {
+    return camera.turn !== 0
+  },
   get snippet(): string {
     return snippet
   },
@@ -124,7 +129,7 @@ export const store = {
     model = typeof message.model === 'string' ? message.model : ''
     targets = isTargets(message.targets) ? message.targets : []
     parts = isParts(message.parts) ? message.parts : []
-    camera = isCamera(message.camera) ? message.camera : { x: 0, y: 0, z: 0, fov: 30 }
+    camera = isCamera(message.camera) ? message.camera : { ...DEFAULT_CAMERA }
     target = typeof message.target === 'string' ? message.target : (targets[0]?.id ?? '')
     index = typeof message.index === 'number' ? message.index : 0
     step = isStepSize(message.step) ? message.step : 'normal'
@@ -159,6 +164,12 @@ export const store = {
   togglePart(part: PartInfo, visible: boolean): void {
     part.visible = visible
     void game.togglePart(part.kind, part.index, visible)
+  },
+
+  turn(fromBehind: boolean): void {
+    const turn = fromBehind ? 180 : 0
+    camera = { ...camera, turn }
+    void game.turn(turn)
   },
 
   reset(): void {

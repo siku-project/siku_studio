@@ -41,6 +41,8 @@ return {
     ['setup_axis_fov'] = 'Zoom',
     ['setup_axis_fov_minus'] = 'Widen',
     ['setup_axis_fov_plus'] = 'Tighten',
+    ['setup_turn'] = 'Subject seen from behind',
+    ['setup_turn_help'] = 'The character turns 180° on itself; the camera and the light stay in front.',
     ['setup_reset'] = 'Recenter',
     ['setup_section_body'] = 'Body',
     ['setup_body_help'] = 'Hide what gets in the way of the framing. Hidden parts stay hidden while this target is captured.',

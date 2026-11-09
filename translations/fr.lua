@@ -41,6 +41,8 @@ return {
     ['setup_axis_fov'] = 'Zoom',
     ['setup_axis_fov_minus'] = 'Élargir',
     ['setup_axis_fov_plus'] = 'Resserrer',
+    ['setup_turn'] = 'Personnage de dos',
+    ['setup_turn_help'] = 'Le personnage pivote de 180° sur lui-même, la caméra et la lumière restent devant.',
     ['setup_reset'] = 'Recadrer',
     ['setup_section_body'] = 'Corps',
     ['setup_body_help'] = 'Masque ce qui gêne le cadrage. Les parties masquées le seront aussi pendant la capture de cette cible.',

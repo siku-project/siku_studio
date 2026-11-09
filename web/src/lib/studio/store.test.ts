@@ -18,7 +18,7 @@ describe('store', () => {
         model: 'mp_f_freemode_01',
         targets: MOCK_TARGETS,
         parts: MOCK_PARTS,
-        camera: { x: 0.1, y: 1.5, z: 0.6, fov: 30 },
+        camera: { x: 0.1, y: 1.5, z: 0.6, fov: 30, turn: 0 },
         target: 'prop_0',
         index: 3,
         step: 'fine',
@@ -34,12 +34,13 @@ describe('store', () => {
   it('patches the camera and the item count on state messages', () => {
     store.applyMessage({
       action: action('state'),
-      camera: { x: 0, y: 1, z: 0.5, fov: 20 },
+      camera: { x: 0, y: 1, z: 0.5, fov: 20, turn: 180 },
       target: 'component_2',
       index: 7,
       count: 80,
     })
     expect(store.camera.fov).toBe(20)
+    expect(store.fromBehind).toBe(true)
     expect(store.current?.id).toBe('component_2')
     expect(store.current?.count).toBe(80)
     expect(store.index).toBe(7)
@@ -56,5 +57,17 @@ describe('store', () => {
     const before = store.camera
     store.applyMessage({ action: action('state'), camera: { x: 'a' } })
     expect(store.camera).toBe(before)
+  })
+
+  it('turns the subject on itself without moving the camera', () => {
+    store.applyMessage({
+      action: action('state'),
+      camera: { x: 0.1, y: 2, z: 0.3, fov: 35, turn: 0 },
+    })
+    store.turn(true)
+    expect(store.fromBehind).toBe(true)
+    expect(store.camera).toMatchObject({ x: 0.1, y: 2, z: 0.3, fov: 35, turn: 180 })
+    store.turn(false)
+    expect(store.camera.turn).toBe(0)
   })
 })
