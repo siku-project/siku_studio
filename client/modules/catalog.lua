@@ -287,28 +287,19 @@ local RUNNERS <const> = {
   eyecolor = runEyeColor,
 }
 
---- Photographs every item of every target of the job, skipping the keys
---- the server already holds, one target after the other.
----@param job table { model, target?, from?, to?, done? }
----@return string summary
-function Catalog.run(job)
-  local targets <const> = targetsFor(job)
-  local list <const>, planned <const>, alreadyDone <const> = inventory(job, targets)
-  local state <const> = {
-    model = job.model,
-    done = job.done or {},
-    photos = 0,
-    skipped = 0,
-    readMs = 0,
-    target = nil,
-    startedAt = GetGameTimer(),
-  }
+local function runModel(job, model, targets, state)
+  local ped <const> = Subject.create(model)
 
-  Siku.log.info('studio.inventory', ('%s: %d targets, %d photos planned, %d already on the server'):format(job.model, #list, planned, alreadyDone), {
-    model = job.model,
+  Scene.frame(ped, nil, model)
+  settle()
+
+  local list <const>, planned <const> = inventory(job, targets)
+  local before <const> = state.photos
+
+  Siku.log.info('studio.inventory', ('%s: %d targets, %d photos planned'):format(model, #list, planned), {
+    model = model,
     targets = list,
     planned = planned,
-    alreadyDone = alreadyDone,
     textures = StudioConfig.catalog.textures,
     matte = StudioConfig.capture.matte,
   })
@@ -322,13 +313,14 @@ function Catalog.run(job)
     state.target = target.id
 
     if entry.count > 0 then
-      Siku.log.debug('studio.debug', ('Capture target %s (%s): %d items from %d to %d, %d photos'):format(target.id, target.label, entry.count, entry.from, entry.to, entry.photos), {
+      Siku.log.debug('studio.debug', ('Capture target %s (%s) on %s: %d items from %d to %d, %d photos'):format(target.id, target.label, model, entry.count, entry.from, entry.to, entry.photos), {
         step = 'capture.target',
+        model = model,
         target = entry,
       })
 
       if target.bare then
-        local bare <const> = StudioConfig.catalog.bare[job.model]
+        local bare <const> = StudioConfig.catalog.bare[model]
 
         if bare then
           Subject.strip(bare)
@@ -336,10 +328,10 @@ function Catalog.run(job)
       end
 
       if target.hide then
-        Subject.hide(target.hide, StudioConfig.catalog.hidden[job.model] or {})
+        Subject.hide(target.hide, StudioConfig.catalog.hidden[model] or {})
       end
 
-      Scene.frame(Subject.ped(), target.preset)
+      Scene.frame(Subject.ped(), target.preset, model)
       settle()
 
       RUNNERS[target.kind](state, target, entry.from, entry.to)
@@ -347,6 +339,37 @@ function Catalog.run(job)
       Subject.restore()
       settle()
     end
+  end
+
+  return { model = model, targets = #list, planned = planned, photos = state.photos - before }
+end
+
+--- Photographs every item of every target of the job on every model of
+--- the catalog, one model after the other, skipping the keys the server
+--- already holds.
+---@param job table { models?, target?, from?, to?, done? }
+---@return string summary
+function Catalog.run(job)
+  local targets <const> = targetsFor(job)
+  local models <const> = job.models or StudioConfig.catalog.models
+  local state <const> = {
+    model = nil,
+    done = job.done or {},
+    photos = 0,
+    skipped = 0,
+    readMs = 0,
+    target = nil,
+    startedAt = GetGameTimer(),
+  }
+  local runs <const> = {}
+  local planned = 0
+
+  for i = 1, #models do
+    Session.checkpoint()
+
+    state.model = models[i]
+    runs[i] = runModel(job, models[i], targets, state)
+    planned = planned + runs[i].planned
   end
 
   local captureMs <const> = GetGameTimer() - state.startedAt
@@ -358,8 +381,14 @@ function Catalog.run(job)
 
   local totalMs <const> = GetGameTimer() - state.startedAt
   local stats <const> = flushed.stats or {}
+  local parts <const> = {}
+
+  for i = 1, #runs do
+    parts[i] = ('%s %d'):format(runs[i].model, runs[i].photos)
+  end
+
   local result <const> = {
-    model = job.model,
+    models = runs,
     target = job.target or 'all',
     planned = planned,
     photos = state.photos,
@@ -381,8 +410,8 @@ function Catalog.run(job)
     backgrounds = stats.backgrounds,
   }
 
-  result.summary = ('%s: %d photos taken, %d skipped, %d uploaded, %d failed, %.1f photos/s, %d s'):format(
-    job.model, state.photos, state.skipped, result.uploaded, result.failed, result.photosPerSecond, math.floor(totalMs / 1000)
+  result.summary = ('%d photos taken (%s), %d skipped, %d uploaded, %d failed, %.1f photos/s, %d s'):format(
+    state.photos, table.concat(parts, ', '), state.skipped, result.uploaded, result.failed, result.photosPerSecond, math.floor(totalMs / 1000)
   )
 
   Session.report('capture', result)

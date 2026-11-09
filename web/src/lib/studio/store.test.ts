@@ -16,6 +16,7 @@ describe('store', () => {
       store.applyMessage({
         action: action('open'),
         model: 'mp_f_freemode_01',
+        models: ['mp_m_freemode_01', 'mp_f_freemode_01'],
         targets: MOCK_TARGETS,
         parts: MOCK_PARTS,
         camera: { x: 0.1, y: 1.5, z: 0.6, fov: 30, turn: 0 },
@@ -26,6 +27,7 @@ describe('store', () => {
     ).toBe(true)
     expect(store.open).toBe(true)
     expect(store.model).toBe('mp_f_freemode_01')
+    expect(store.models).toEqual(['mp_m_freemode_01', 'mp_f_freemode_01'])
     expect(store.current?.id).toBe('prop_0')
     expect(store.index).toBe(3)
     expect(store.step).toBe('fine')
@@ -57,6 +59,21 @@ describe('store', () => {
     const before = store.camera
     store.applyMessage({ action: action('state'), camera: { x: 'a' } })
     expect(store.camera).toBe(before)
+  })
+
+  it('switches the model and takes the counts the game sends back', () => {
+    store.pickModel('mp_m_freemode_01')
+    expect(store.model).toBe('mp_m_freemode_01')
+    store.applyMessage({
+      action: action('state'),
+      model: 'mp_m_freemode_01',
+      targets: [{ id: 'component_2', label: 'Hair', kind: 'component', index: 2, count: 37 }],
+      target: 'component_2',
+      index: 0,
+      count: 37,
+    })
+    expect(store.targets).toHaveLength(1)
+    expect(store.current?.count).toBe(37)
   })
 
   it('turns the subject on itself without moving the camera', () => {

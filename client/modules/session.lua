@@ -91,14 +91,15 @@ local function run(token, kind, bench, job)
 
   Siku.log.debug('studio.debug', 'Scene built, camera rendering', { step = 'scene' })
 
-  local ped <const> = Subject.create()
+  local model <const> = Subject.playerModel()
+  local ped <const> = Subject.create(model)
 
-  Scene.frame(ped, nil)
+  Scene.frame(ped, nil, model)
 
-  Siku.log.debug('studio.debug', ('Subject cloned (%d) and framed'):format(ped), {
+  Siku.log.debug('studio.debug', ('Subject %s (%d) created and framed'):format(model, ped), {
     step = 'subject',
     ped = ped,
-    model = GetEntityModel(ped),
+    model = model,
   })
 
   if kind == 'setup' then
