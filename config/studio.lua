@@ -282,17 +282,22 @@ StudioConfig = {
     --- output/.
     url = 'https://cdn.heliony.com',
 
-    --- Folder of the CDN that receives the photos (its id or its path).
-    folder = '01a1bc58-a574-7e63-98e1-03fb1dd489a9',
+    --- Folder of the CDN under which the photos are filed (its id or its
+    --- path), '' for the root of the CDN. Each target gets its own folder
+    --- there (`component_11`, `prop_0`…), with one folder per model inside
+    --- (`component_11/mp_m_freemode_01`), created on the first photo: the
+    --- CDN setting that creates missing folders must be on.
+    folder = '',
 
     --- Convar holding the API key. The key needs the write permission on
-    --- the folder above.
+    --- the folder above, so a key without a space when the folder is the
+    --- root.
     keyConvar = 'siku_studio_cdn_key',
 
-    --- Photos are named 1.webp, 2.webp… in the order they are taken, and a
-    --- new session replaces the photos of the previous one. The catalog
-    --- index.json travels with them and maps each number to its item.
-    numbered = true,
+    --- Photos are named after what they show (`component_11_12_0.webp`:
+    --- component 11, drawable 12, texture 0) and a new session replaces the
+    --- photos of the previous one. Every folder carries an index.json that
+    --- maps each photo to its CDN link.
     overwrite = true,
 
     --- Longest wait (ms) for the CDN to confirm one photo.
