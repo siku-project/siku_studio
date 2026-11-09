@@ -8,7 +8,7 @@ import globals from 'globals'
 import svelteConfig from './svelte.config.js'
 
 export default defineConfig(
-  globalIgnores(['**/dist/**', '**/node_modules/**']),
+  globalIgnores(['**/dist/**', '**/node_modules/**', 'src/paraglide/**']),
 
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -19,6 +19,14 @@ export default defineConfig(
     files: ['**/*.{ts,svelte}'],
     languageOptions: {
       globals: { ...globals.browser },
+    },
+  },
+
+  {
+    name: 'app/scripts',
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      globals: { ...globals.node },
     },
   },
 

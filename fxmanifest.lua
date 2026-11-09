@@ -20,6 +20,7 @@ server_scripts {
 }
 
 client_scripts {
+  'client/siku_ui.lua',
   'client/nui.lua',
   'client/modules/*.lua',
 }

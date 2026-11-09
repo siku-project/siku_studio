@@ -60,6 +60,20 @@ function Nui.on(name, handler)
   listeners[name] = handler
 end
 
+--- Registers a callback of the interface by name, answered at once and
+--- handled in its own thread.
+---@param name string The callback name, without the resource prefix.
+---@param handler fun(data: table)
+function Nui.callback(name, handler)
+  RegisterNUICallback(PREFIX .. name, function(data, cb)
+    cb({})
+
+    CreateThread(function()
+      handler(type(data) == 'table' and data or {})
+    end)
+  end)
+end
+
 --- Forgets every answer still awaited, resolving them as cancelled.
 function Nui.cancelAll()
   for id, waiting in pairs(pending) do
@@ -97,4 +111,13 @@ RegisterNUICallback(PREFIX .. 'event', function(data, cb)
       handler(data)
     end)
   end
+end)
+
+RegisterNUICallback(PREFIX .. 'ready', function(_, cb)
+  cb({
+    locale = {
+      language = TranslationConfig.language,
+      translations = { web = Siku.locale.translations().web or {} },
+    },
+  })
 end)
