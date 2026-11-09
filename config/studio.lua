@@ -63,6 +63,7 @@ StudioConfig = {
       shoes = { bone = 'SKEL_L_Foot', distance = 1.1, height = 0.15, fov = 30.0, offset = vector3(0.1, 0.0, 0.0) },
       wrist = { bone = 'SKEL_L_Hand', distance = 0.5, height = 0.05, fov = 20.0 },
       full = { bone = 'SKEL_Pelvis', distance = 3.6, height = 0.1, fov = 40.0 },
+      component_2 = { anchor = vector3(-0.055, 1.025, 0.665), fov = 30.0 },
     },
 
     --- A preset can also be written as `{ anchor = vector3(right, forward,
@@ -142,7 +143,7 @@ StudioConfig = {
     targets = {
       { id = 'component_0', kind = 'component', index = 0, label = 'Face', preset = 'head' },
       { id = 'component_1', kind = 'component', index = 1, label = 'Mask', preset = 'head_wide' },
-      { id = 'component_2', kind = 'component', index = 2, label = 'Hair', preset = 'head_wide' },
+      { id = 'component_2', kind = 'component', index = 2, label = 'Hair', preset = 'component_2', hide = { components = { 1, 4, 5, 6, 7, 8, 9, 10, 11 }, props = { 0 } } },
       { id = 'component_3', kind = 'component', index = 3, label = 'Torso', preset = 'bust' },
       { id = 'component_4', kind = 'component', index = 4, label = 'Legs', preset = 'legs' },
       { id = 'component_5', kind = 'component', index = 5, label = 'Bag', preset = 'back' },
