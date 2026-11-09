@@ -10,6 +10,7 @@ export const game = {
   nudge: (axis: Axis, direction: 1 | -1) => sendNuiEvent('setup.nudge', { axis, direction }),
   togglePart: (kind: 'component' | 'prop', index: number, visible: boolean) =>
     sendNuiEvent('setup.part', { kind, index, visible }),
+  turn: (turn: number) => sendNuiEvent('setup.turn', { turn }),
   reset: () => sendNuiEvent('setup.reset'),
   save: () => sendNuiEvent('setup.save'),
   close: () => sendNuiEvent('setup.close'),

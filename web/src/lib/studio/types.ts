@@ -22,6 +22,7 @@ export interface Camera {
   y: number
   z: number
   fov: number
+  turn: number
 }
 
 export interface Axes {
@@ -43,4 +44,6 @@ export const isStepSize = (value: unknown): value is StepSize =>
 export const isCamera = (value: unknown): value is Camera =>
   typeof value === 'object' &&
   value !== null &&
-  ['x', 'y', 'z', 'fov'].every((key) => typeof (value as Record<string, unknown>)[key] === 'number')
+  ['x', 'y', 'z', 'fov', 'turn'].every(
+    (key) => typeof (value as Record<string, unknown>)[key] === 'number',
+  )

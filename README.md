@@ -23,7 +23,7 @@ Every session, benchmark result and failure is sent to the Control Center under 
 
 ### Framing
 
-`/studio setup` is the way to adjust how a target is photographed. Pick the target, pick an item to look at, move the camera until the framing is right, hide the parts of the body that get in the way (they are hidden again during the capture of that target), then generate the configuration: a `camera.presets` line in the `anchor` form and the `catalog.targets` line to replace. Paste both in `config/studio.lua` and restart the resource.
+`/studio setup` is the way to adjust how a target is photographed. Pick the target, pick an item to look at, move the camera until the framing is right, turn the subject on itself for what sits on its back, hide the parts of the body that get in the way (they are hidden again during the capture of that target), then generate the configuration: a `camera.presets` line in the `anchor` form and the `catalog.targets` line to replace. Paste both in `config/studio.lua` and restart the resource.
 
 
 The targets, their camera framing and the frozen pose live in `config/studio.lua`. The subject is a clone of the player, so the catalog is made for the player's ped model, `mp_m_freemode_01` or `mp_f_freemode_01`. Each item is photographed on a green then a magenta background, and the two readings give an exact alpha: the WebP files are transparent, hair and glasses included.

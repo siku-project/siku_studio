@@ -123,20 +123,30 @@ function Scene.setBackground(name)
 end
 
 local function axes(ped)
-  local forward <const> = GetEntityForwardVector(ped)
+  local heading <const> = math.rad(StudioConfig.scene.heading)
+  local forward <const> = vector3(-math.sin(heading), math.cos(heading), 0.0)
 
-  return GetEntityCoords(ped), vector3(forward.x, forward.y, 0.0), vector3(forward.y, -forward.x, 0.0)
+  return GetEntityCoords(ped), forward, vector3(forward.y, -forward.x, 0.0)
 end
 
 local function presetOf(presetName)
   return StudioConfig.camera.presets[presetName or StudioConfig.camera.preset] or StudioConfig.camera.presets[StudioConfig.camera.preset]
 end
 
+--- Turns the subject on itself by the given angle from the studio's
+--- heading, so a target seen from behind keeps the camera and the light
+--- in front.
+---@param ped number
+---@param degrees number
+function Scene.turn(ped, degrees)
+  SetEntityHeading(ped, (StudioConfig.scene.heading + degrees) % 360.0)
+end
+
 local function boneCamera(ped, preset)
   local bone <const> = BONES[preset.bone] or BONES.SKEL_Spine3
   local offset <const> = preset.offset or vector3(0.0, 0.0, 0.0)
   local target <const> = GetPedBoneCoords(ped, bone, offset.x, offset.y, offset.z)
-  local forward <const> = GetEntityForwardVector(ped)
+  local _ <const>, forward <const> = axes(ped)
   local yaw <const> = math.rad(preset.yaw or 0.0)
   local direction <const> = vector3(
     forward.x * math.cos(yaw) - forward.y * math.sin(yaw),
@@ -147,16 +157,20 @@ local function boneCamera(ped, preset)
   return target + direction * preset.distance + vector3(0.0, 0.0, preset.height), target
 end
 
---- Puts the camera at a point of the subject's own frame (right, forward,
---- up in meters from its feet), looking straight back at the subject
---- without any tilt, with the given field of view.
+--- Puts the camera at a point of the studio's frame (right, forward, up
+--- in meters from the subject), looking straight back at the subject
+--- without any tilt, with the given field of view, the subject turned on
+--- itself by `turn` degrees.
 ---@param ped number
 ---@param anchor vector3
 ---@param fov number
-function Scene.place(ped, anchor, fov)
+---@param turn number|nil
+function Scene.place(ped, anchor, fov, turn)
   if not state then
     return
   end
+
+  Scene.turn(ped, turn or 0.0)
 
   local origin <const>, forward <const>, right <const> = axes(ped)
   local coords <const> = origin + right * anchor.x + forward * anchor.y + vector3(0.0, 0.0, anchor.z)
@@ -168,24 +182,28 @@ function Scene.place(ped, anchor, fov)
   Siku.camera.setFov(state.camera, fov)
 end
 
---- The anchor and field of view a preset gives, in the subject's frame,
---- so a bone preset can be adjusted by hand from where it stands.
+--- The anchor, field of view and turn a preset gives, in the studio's
+--- frame, so a bone preset can be adjusted by hand from where it stands.
 ---@param ped number
 ---@param presetName string|nil
 ---@return vector3 anchor
 ---@return number fov
+---@return number turn
 function Scene.anchorOf(ped, presetName)
   local preset <const> = presetOf(presetName)
+  local turn <const> = preset.turn or 0.0
 
   if preset.anchor then
-    return preset.anchor, preset.fov
+    return preset.anchor, preset.fov, turn
   end
+
+  Scene.turn(ped, turn)
 
   local origin <const>, forward <const>, right <const> = axes(ped)
   local coords <const> = boneCamera(ped, preset)
   local delta <const> = coords - origin
 
-  return vector3(delta.x * right.x + delta.y * right.y, delta.x * forward.x + delta.y * forward.y, delta.z), preset.fov
+  return vector3(delta.x * right.x + delta.y * right.y, delta.x * forward.x + delta.y * forward.y, delta.z), preset.fov, turn
 end
 
 --- Places the camera in front of a subject with a framing preset.
@@ -199,9 +217,11 @@ function Scene.frame(ped, presetName)
   local preset <const> = presetOf(presetName)
 
   if preset.anchor then
-    Scene.place(ped, preset.anchor, preset.fov)
+    Scene.place(ped, preset.anchor, preset.fov, preset.turn)
     return
   end
+
+  Scene.turn(ped, preset.turn or 0.0)
 
   local coords <const>, target <const> = boneCamera(ped, preset)
 
