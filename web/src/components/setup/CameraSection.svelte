@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Button, Code, Divider, Hint, Segmented, type IconName } from '@siku/ui'
+  import { Button, Code, Divider, Hint, Segmented, Switch, type IconName } from '@siku/ui'
   import { m, tr } from '@/lib/i18n.svelte'
   import type { MessageKey } from '@/lib/i18n.svelte'
   import { store } from '@/lib/studio/store.svelte'
@@ -23,7 +23,8 @@
     STEP_SIZES.map((value) => ({ value, label: tr(`setup_step_${value}` as MessageKey) })),
   )
   const readout = $derived(
-    `x ${store.camera.x.toFixed(2)}  y ${store.camera.y.toFixed(2)}  z ${store.camera.z.toFixed(2)}  fov ${store.camera.fov.toFixed(1)}`,
+    `x ${store.camera.x.toFixed(2)}  y ${store.camera.y.toFixed(2)}  z ${store.camera.z.toFixed(2)}  fov ${store.camera.fov.toFixed(1)}` +
+      (store.fromBehind ? `  turn ${store.camera.turn.toFixed(0)}` : ''),
   )
 </script>
 
@@ -59,6 +60,12 @@
       </div>
     {/each}
   </div>
+  <Switch
+    label={m.setup_turn()}
+    description={m.setup_turn_help()}
+    checked={store.fromBehind}
+    onchange={(value) => store.turn(value)}
+  />
   <div class="flex items-center justify-between gap-3">
     <Code text={readout} />
     <Button variant="ghost" size="sm" icon="refresh" onclick={() => store.reset()}>

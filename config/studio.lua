@@ -47,8 +47,8 @@ StudioConfig = {
 
   camera = {
     --- Framing presets, relative to a bone of the subject. The camera is
-    --- placed at the given distance from the bone, turned by yaw degrees
-    --- around the subject (0 = facing the subject), raised by height, and
+    --- placed at the given distance from the bone, in front of the studio
+    --- (or turned by yaw degrees around the subject), raised by height, and
     --- points at the bone moved by offset (right, forward, up in meters).
     presets = {
       head = { bone = 'SKEL_Head', distance = 0.75, height = 0.03, fov = 25.0 },
@@ -58,7 +58,7 @@ StudioConfig = {
       neck = { bone = 'SKEL_Neck_1', distance = 0.9, height = 0.0, fov = 25.0 },
       bust = { bone = 'SKEL_Spine3', distance = 2.0, height = 0.3, fov = 35.0 },
       bust_bare = { bone = 'SKEL_Spine3', distance = 1.6, height = 0.1, fov = 30.0 },
-      back = { bone = 'SKEL_Spine3', distance = 2.0, height = 0.3, fov = 35.0, yaw = 180.0 },
+      back = { bone = 'SKEL_Spine3', distance = 2.0, height = 0.3, fov = 35.0, turn = 180.0 },
       legs = { bone = 'SKEL_Pelvis', distance = 2.4, height = -0.35, fov = 35.0 },
       shoes = { bone = 'SKEL_L_Foot', distance = 1.1, height = 0.15, fov = 30.0, offset = vector3(0.1, 0.0, 0.0) },
       wrist = { bone = 'SKEL_L_Hand', distance = 0.5, height = 0.05, fov = 20.0 },
@@ -79,9 +79,11 @@ StudioConfig = {
     },
 
     --- A preset can also be written as `{ anchor = vector3(right, forward,
-    --- up), fov }`: the camera stands at that point of the subject's own
-    --- frame, in meters from its feet, and looks straight back at it
-    --- without tilting. `/studio setup` generates presets in that form.
+    --- up), fov }`: the camera stands at that point of the studio's frame,
+    --- in meters from the subject, and looks straight back at it without
+    --- tilting. `/studio setup` generates presets in that form. Any preset
+    --- takes `turn`: degrees the subject is turned on itself, 180 to
+    --- photograph its back with the camera and the light still in front.
 
     --- The preset used when none is asked.
     preset = 'bust',

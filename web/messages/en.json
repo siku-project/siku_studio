@@ -49,5 +49,7 @@
   "setup_step_large": "Large",
   "setup_step_normal": "Normal",
   "setup_target": "This framing is for",
-  "setup_title": "Framing tool"
+  "setup_title": "Framing tool",
+  "setup_turn": "Subject seen from behind",
+  "setup_turn_help": "The character turns 180° on itself; the camera and the light stay in front."
 }

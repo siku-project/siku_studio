@@ -138,11 +138,11 @@ local function parts()
 end
 
 local function camera()
-  return { x = state.anchor.x, y = state.anchor.y, z = state.anchor.z, fov = state.fov }
+  return { x = state.anchor.x, y = state.anchor.y, z = state.anchor.z, fov = state.fov, turn = state.turn }
 end
 
 local function frame()
-  Scene.place(Subject.ped(), state.anchor, state.fov)
+  Scene.place(Subject.ped(), state.anchor, state.fov, state.turn)
 end
 
 local function move(right, closer, up)
@@ -162,7 +162,7 @@ local function push()
 end
 
 local function recenter()
-  state.anchor, state.fov = Scene.anchorOf(Subject.ped(), state.target.preset)
+  state.anchor, state.fov, state.turn = Scene.anchorOf(Subject.ped(), state.target.preset)
 end
 
 local function setTarget(target)
@@ -227,10 +227,12 @@ local function snippet()
     fields[#fields + 1] = ('hide = { %s }'):format(table.concat(hide, ', '))
   end
 
+  local turn <const> = state.turn ~= 0 and (', turn = %.1f'):format(state.turn) or ''
+
   return table.concat({
     ('-- siku_studio · /studio setup · %s · %s'):format(target.id, state.model),
     '-- config/studio.lua, camera.presets :',
-    ('%s = { anchor = vector3(%.3f, %.3f, %.3f), fov = %.1f },'):format(name, state.anchor.x, state.anchor.y, state.anchor.z, state.fov),
+    ('%s = { anchor = vector3(%.3f, %.3f, %.3f), fov = %.1f%s },'):format(name, state.anchor.x, state.anchor.y, state.anchor.z, state.fov, turn),
     ('-- config/studio.lua, catalog.targets, à la place de la ligne %s :'):format(target.id),
     ('{ %s },'):format(table.concat(fields, ', ')),
   }, '\n')
@@ -258,6 +260,7 @@ function Setup.run()
     index = 0,
     anchor = vector3(0.0, 0.0, 0.0),
     fov = 30.0,
+    turn = 0.0,
     hiddenComponents = {},
     hiddenProps = {},
     input = { x = 0, y = 0, z = 0, fov = 0 },
@@ -401,6 +404,12 @@ handle('setup.part', function(data)
 
   set[index] = (not data.visible) or nil
   applyLook()
+  push()
+end)
+
+handle('setup.turn', function(data)
+  state.turn = (tonumber(data.turn) or 0.0) % 360.0
+  frame()
   push()
 end)
 

@@ -49,5 +49,7 @@
   "setup_step_large": "Large",
   "setup_step_normal": "Normal",
   "setup_target": "Ce cadrage sert à",
-  "setup_title": "Réglage des cadrages"
+  "setup_title": "Réglage des cadrages",
+  "setup_turn": "Personnage de dos",
+  "setup_turn_help": "Le personnage pivote de 180° sur lui-même, la caméra et la lumière restent devant."
 }
