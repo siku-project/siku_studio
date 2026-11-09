@@ -215,6 +215,51 @@ function Subject.strip(bare)
   end
 end
 
+--- Hides parts of the clone for a photo: components take the empty
+--- drawable of the model, props are removed.
+---@param hide table { components?: number[], props?: number[] }
+---@param hidden table { [component] = drawable } The empty drawables of the model.
+function Subject.hide(hide, hidden)
+  for i = 1, #(hide.components or {}) do
+    local component <const> = hide.components[i]
+
+    SetPedComponentVariation(ped, component, hidden[component] or 0, DEFAULT_TEXTURE, DEFAULT_PALETTE)
+  end
+
+  for i = 1, #(hide.props or {}) do
+    ClearPedProp(ped, hide.props[i])
+  end
+end
+
+--- Puts one component back to what the player wears.
+---@param component number
+function Subject.show(component)
+  local pair <const> = original and original.components[component]
+
+  if pair then
+    SetPedComponentVariation(ped, component, pair[1], pair[2], DEFAULT_PALETTE)
+  end
+end
+
+--- Puts one prop back to what the player wears, if any.
+---@param prop number
+function Subject.showProp(prop)
+  local pair <const> = original and original.props[prop]
+
+  if pair and pair[1] >= 0 then
+    SetPedPropIndex(ped, prop, pair[1], pair[2], true)
+  end
+end
+
+--- Whether the player wears something in a prop slot.
+---@param prop number
+---@return boolean
+function Subject.wearsProp(prop)
+  local pair <const> = original and original.props[prop]
+
+  return pair ~= nil and pair[1] >= 0
+end
+
 --- Asks the game to stream one component variation ahead of time.
 ---@param component number
 ---@param drawable number

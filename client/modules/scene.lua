@@ -122,15 +122,17 @@ function Scene.setBackground(name)
   end
 end
 
---- Places the camera in front of a subject with a framing preset.
----@param ped number The subject ped.
----@param presetName string|nil A preset name from the configuration, the default one when nil.
-function Scene.frame(ped, presetName)
-  if not state then
-    return
-  end
+local function axes(ped)
+  local forward <const> = GetEntityForwardVector(ped)
 
-  local preset <const> = StudioConfig.camera.presets[presetName or StudioConfig.camera.preset] or StudioConfig.camera.presets[StudioConfig.camera.preset]
+  return GetEntityCoords(ped), vector3(forward.x, forward.y, 0.0), vector3(forward.y, -forward.x, 0.0)
+end
+
+local function presetOf(presetName)
+  return StudioConfig.camera.presets[presetName or StudioConfig.camera.preset] or StudioConfig.camera.presets[StudioConfig.camera.preset]
+end
+
+local function boneCamera(ped, preset)
   local bone <const> = BONES[preset.bone] or BONES.SKEL_Spine3
   local offset <const> = preset.offset or vector3(0.0, 0.0, 0.0)
   local target <const> = GetPedBoneCoords(ped, bone, offset.x, offset.y, offset.z)
@@ -141,7 +143,67 @@ function Scene.frame(ped, presetName)
     forward.x * math.sin(yaw) + forward.y * math.cos(yaw),
     0.0
   )
-  local coords <const> = target + direction * preset.distance + vector3(0.0, 0.0, preset.height)
+
+  return target + direction * preset.distance + vector3(0.0, 0.0, preset.height), target
+end
+
+--- Puts the camera at a point of the subject's own frame (right, forward,
+--- up in meters from its feet), looking straight back at the subject
+--- without any tilt, with the given field of view.
+---@param ped number
+---@param anchor vector3
+---@param fov number
+function Scene.place(ped, anchor, fov)
+  if not state then
+    return
+  end
+
+  local origin <const>, forward <const>, right <const> = axes(ped)
+  local coords <const> = origin + right * anchor.x + forward * anchor.y + vector3(0.0, 0.0, anchor.z)
+  local heading <const> = math.deg(math.atan(-forward.y, -forward.x)) - 90.0
+
+  Siku.camera.stopPointing(state.camera)
+  Siku.camera.setCoords(state.camera, coords)
+  Siku.camera.setRotation(state.camera, vector3(0.0, 0.0, heading))
+  Siku.camera.setFov(state.camera, fov)
+end
+
+--- The anchor and field of view a preset gives, in the subject's frame,
+--- so a bone preset can be adjusted by hand from where it stands.
+---@param ped number
+---@param presetName string|nil
+---@return vector3 anchor
+---@return number fov
+function Scene.anchorOf(ped, presetName)
+  local preset <const> = presetOf(presetName)
+
+  if preset.anchor then
+    return preset.anchor, preset.fov
+  end
+
+  local origin <const>, forward <const>, right <const> = axes(ped)
+  local coords <const> = boneCamera(ped, preset)
+  local delta <const> = coords - origin
+
+  return vector3(delta.x * right.x + delta.y * right.y, delta.x * forward.x + delta.y * forward.y, delta.z), preset.fov
+end
+
+--- Places the camera in front of a subject with a framing preset.
+---@param ped number The subject ped.
+---@param presetName string|nil A preset name from the configuration, the default one when nil.
+function Scene.frame(ped, presetName)
+  if not state then
+    return
+  end
+
+  local preset <const> = presetOf(presetName)
+
+  if preset.anchor then
+    Scene.place(ped, preset.anchor, preset.fov)
+    return
+  end
+
+  local coords <const>, target <const> = boneCamera(ped, preset)
 
   Siku.camera.setCoords(state.camera, coords)
   Siku.camera.pointAtCoords(state.camera, target)

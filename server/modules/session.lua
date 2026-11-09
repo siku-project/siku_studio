@@ -184,7 +184,7 @@ local function start(src, kind, bench, job)
     photos = 0,
   }
 
-  if kind ~= 'bench' and not Studio.cdnEnabled() then
+  if kind ~= 'bench' and kind ~= 'setup' and not Studio.cdnEnabled() then
     Siku.log.warn('studio.cdn_disabled', ('No API key in convar %s: photos stay on disk under %s'):format(StudioConfig.cdn.keyConvar, StudioConfig.output.root), {
       convar = StudioConfig.cdn.keyConvar,
       url = StudioConfig.cdn.url,
@@ -320,6 +320,11 @@ Siku.command.register('studio', function(src, args)
     return
   end
 
+  if action == 'setup' then
+    start(src, 'setup', nil, nil)
+    return
+  end
+
   if action == 'capture' then
     local model <const> = Studio.catalogModelOf(src)
 
@@ -374,9 +379,9 @@ Siku.command.register('studio', function(src, args)
 end, {
   permission = StudioConfig.permission,
   cooldown = StudioConfig.cooldownMs,
-  description = 'Studio de capture : capture, bench, probe, status, stop.',
+  description = 'Studio de capture : capture, setup, bench, probe, status, stop.',
   arguments = {
-    { name = 'action', type = 'string', choices = { 'capture', 'bench', 'probe', 'status', 'stop' }, help = 'capture, bench, probe, status ou stop' },
+    { name = 'action', type = 'string', choices = { 'capture', 'setup', 'bench', 'probe', 'status', 'stop' }, help = 'capture, setup, bench, probe, status ou stop' },
     { name = 'target', type = 'string', optional = true, help = 'capture : all ou une cible (component_11, prop_0, overlay_1, haircolor, eyecolor) ; bench : variations, readback, encode, upload, save, full, all' },
     { name = 'from', type = 'integer', optional = true, min = 0, help = 'capture : premier index' },
     { name = 'to', type = 'integer', optional = true, min = 0, help = 'capture : dernier index' },
@@ -392,6 +397,18 @@ RegisterNetEvent(REPORT_EVENT, function(token, name, result)
   end
 
   current.results[name] = result
+
+  if name == 'setup' then
+    Siku.log.info('studio.setup', ('Framing generated for %s'):format(tostring(result.target)), {
+      target = result.target,
+      snippet = result.snippet,
+      anchor = result.anchor,
+      hide = result.hide,
+    }, { source = src, entities = actor(src) })
+    print(('\n%s\n'):format(tostring(result.snippet)))
+    tell(src, T('studio_setup_saved', tostring(result.target)))
+    return
+  end
 
   if name == 'capture' then
     Studio.catalogFlushAll()

@@ -56,6 +56,7 @@ end
 local function cleanup()
   Nui.cancelAll()
   Transport.cancelAll()
+  Setup.cleanup()
   Nui.send('reset')
   Subject.destroy()
   Scene.leave()
@@ -90,6 +91,18 @@ local function run(token, kind, bench, job)
     ped = ped,
     model = GetEntityModel(ped),
   })
+
+  if kind == 'setup' then
+    local summary <const> = Setup.run()
+
+    Siku.log.debug('studio.debug', ('Session setup done on the client in %d ms'):format(GetGameTimer() - started), {
+      step = 'done',
+      durationMs = GetGameTimer() - started,
+      summary = summary,
+    })
+
+    return summary
+  end
 
   local width <const>, height <const> = GetActiveScreenResolution()
   local configured <const> = Nui.request('configure', {

@@ -34,10 +34,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-node@v4
+      - uses: siku-project/siku_ci/actions/web-checks@v1
         with:
-          node-version: 22
-      - run: for file in web/*.js; do node --check "$file"; done
+          framework: svelte
+
+  design-system:
+    name: design-system
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bunx siku check src
+      - run: bunx siku doctor .
+      - run: bunx siku ai check ..
 
   guard:
     name: guard
