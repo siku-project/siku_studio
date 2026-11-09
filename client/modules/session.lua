@@ -4,6 +4,7 @@ local START_EVENT <const> = 'siku_studio:client:start'
 local STOP_EVENT <const> = 'siku_studio:client:stop'
 local REPORT_EVENT <const> = 'siku_studio:server:report'
 local FINISHED_EVENT <const> = 'siku_studio:server:finished'
+local ALIVE_EVENT <const> = 'siku_studio:server:alive'
 local CONFIGURE_TIMEOUT_MS <const> = 10000
 
 local resource <const> = GetCurrentResourceName()
@@ -34,6 +35,14 @@ end
 ---@return string|nil
 function Session.token()
   return state and state.token or nil
+end
+
+--- Tells the server the session is still in use, for the tools where
+--- nothing travels while the player works.
+function Session.alive()
+  if state then
+    TriggerServerEvent(ALIVE_EVENT, state.token)
+  end
 end
 
 --- Sends one bench result to the server, which logs and keeps it.
