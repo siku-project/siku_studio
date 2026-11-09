@@ -2,6 +2,7 @@ local START_EVENT <const> = 'siku_studio:client:start'
 local STOP_EVENT <const> = 'siku_studio:client:stop'
 local REPORT_EVENT <const> = 'siku_studio:server:report'
 local FINISHED_EVENT <const> = 'siku_studio:server:finished'
+local ALIVE_EVENT <const> = 'siku_studio:server:alive'
 local TOKEN_LENGTH <const> = 16
 local WATCH_INTERVAL_MS <const> = 5000
 local CLIENT_BENCHES <const> = { variations = true, readback = true, encode = true, upload = true, full = true, all = true }
@@ -387,6 +388,15 @@ end, {
     { name = 'to', type = 'integer', optional = true, min = 0, help = 'capture : dernier index' },
   },
 })
+
+RegisterNetEvent(ALIVE_EVENT, function(token)
+  local src <const> = source
+  local current <const> = Studio.touch(token)
+
+  if current and current.player ~= src then
+    current.updatedAt = 0
+  end
+end)
 
 RegisterNetEvent(REPORT_EVENT, function(token, name, result)
   local src <const> = source
