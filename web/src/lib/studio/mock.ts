@@ -22,6 +22,7 @@ export const MOCK_PARTS: PartInfo[] = [
 export const loadMocks = (): void => {
   store.load({
     model: 'mp_m_freemode_01',
+    models: ['mp_m_freemode_01', 'mp_f_freemode_01'],
     targets: MOCK_TARGETS,
     parts: MOCK_PARTS,
     camera: { x: 0, y: 2.0, z: 0.65, fov: 35, turn: 0 },

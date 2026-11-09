@@ -193,10 +193,10 @@ local function start(src, kind, bench, job)
     }, { outcome = 'partial', source = src, entities = actor(src) })
   end
 
-  Siku.log.info('studio.session_started', ('%s started a %s session%s'):format(GetPlayerName(tostring(src)) or src, kind, bench and (' (' .. bench .. ')') or (job and (' (' .. job.model .. ', ' .. job.target .. ')') or '')), {
+  Siku.log.info('studio.session_started', ('%s started a %s session%s'):format(GetPlayerName(tostring(src)) or src, kind, bench and (' (' .. bench .. ')') or (job and (' (' .. table.concat(job.models, ' + ') .. ', ' .. job.target .. ')') or '')), {
     kind = kind,
     bench = bench,
-    job = job and { model = job.model, target = job.target, from = job.from, to = job.to, alreadyDone = job.alreadyDone } or nil,
+    job = job and { models = job.models, target = job.target, from = job.from, to = job.to, alreadyDone = job.alreadyDone } or nil,
     component = StudioConfig.bench.component,
     drawables = StudioConfig.bench.drawables,
     size = StudioConfig.capture.size,
@@ -327,22 +327,10 @@ Siku.command.register('studio', function(src, args)
   end
 
   if action == 'capture' then
-    local model <const> = Studio.catalogModelOf(src)
-
-    if not model then
-      Siku.log.warn('studio.command_refused', ('%s asked for a capture with a ped model the catalog does not accept'):format(GetPlayerName(tostring(src)) or src), {
-        action = action,
-        reason = 'unknown_model',
-        model = GetEntityModel(GetPlayerPed(src)),
-      }, { outcome = 'denied', source = src, entities = actor(src) })
-      tell(src, T('studio_model_unknown'))
-      return
-    end
-
-    local done <const>, count <const> = Studio.catalogDone(model)
+    local done <const>, count <const> = Studio.catalogDone()
 
     start(src, 'capture', nil, {
-      model = model,
+      models = StudioConfig.catalog.models,
       target = (args.target or 'all'):lower(),
       from = args.from,
       to = args.to,

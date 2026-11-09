@@ -129,8 +129,12 @@ local function axes(ped)
   return GetEntityCoords(ped), forward, vector3(forward.y, -forward.x, 0.0)
 end
 
-local function presetOf(presetName)
-  return StudioConfig.camera.presets[presetName or StudioConfig.camera.preset] or StudioConfig.camera.presets[StudioConfig.camera.preset]
+local function presetOf(presetName, model)
+  local camera <const> = StudioConfig.camera
+  local own <const> = model and camera.models and camera.models[model] or nil
+  local name <const> = presetName or camera.preset
+
+  return own and own[name] or camera.presets[name] or camera.presets[camera.preset]
 end
 
 --- Turns the subject on itself by the given angle from the studio's
@@ -184,13 +188,15 @@ end
 
 --- The anchor, field of view and turn a preset gives, in the studio's
 --- frame, so a bone preset can be adjusted by hand from where it stands.
+--- The model's own presets win over the shared ones.
 ---@param ped number
 ---@param presetName string|nil
+---@param model string|nil
 ---@return vector3 anchor
 ---@return number fov
 ---@return number turn
-function Scene.anchorOf(ped, presetName)
-  local preset <const> = presetOf(presetName)
+function Scene.anchorOf(ped, presetName, model)
+  local preset <const> = presetOf(presetName, model)
   local turn <const> = preset.turn or 0.0
 
   if preset.anchor then
@@ -206,15 +212,17 @@ function Scene.anchorOf(ped, presetName)
   return vector3(delta.x * right.x + delta.y * right.y, delta.x * forward.x + delta.y * forward.y, delta.z), preset.fov, turn
 end
 
---- Places the camera in front of a subject with a framing preset.
+--- Places the camera in front of a subject with a framing preset, the
+--- model's own version of it when the configuration has one.
 ---@param ped number The subject ped.
 ---@param presetName string|nil A preset name from the configuration, the default one when nil.
-function Scene.frame(ped, presetName)
+---@param model string|nil The model folder name of the subject.
+function Scene.frame(ped, presetName, model)
   if not state then
     return
   end
 
-  local preset <const> = presetOf(presetName)
+  local preset <const> = presetOf(presetName, model)
 
   if preset.anchor then
     Scene.place(ped, preset.anchor, preset.fov, preset.turn)

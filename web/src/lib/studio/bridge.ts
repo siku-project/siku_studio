@@ -3,6 +3,7 @@ import type { Axes, Axis, StepSize } from './types'
 
 /** Every call the framing tool makes to the game, by name. */
 export const game = {
+  pickModel: (model: string) => sendNuiEvent('setup.model', { model }),
   pickTarget: (id: string) => sendNuiEvent('setup.target', { id }),
   showIndex: (index: number) => sendNuiEvent('setup.index', { index }),
   setStep: (step: StepSize) => sendNuiEvent('setup.step', { step }),

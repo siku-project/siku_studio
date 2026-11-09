@@ -1,14 +1,22 @@
 <script lang="ts">
-  import { Button, ButtonGroup, Surface } from '@siku/ui'
+  import { Button, ButtonGroup, Segmented, Surface } from '@siku/ui'
   import BodySection from '@/components/setup/BodySection.svelte'
   import CameraSection from '@/components/setup/CameraSection.svelte'
   import ResultSection from '@/components/setup/ResultSection.svelte'
   import TargetSection from '@/components/setup/TargetSection.svelte'
-  import { m } from '@/lib/i18n.svelte'
+  import { m, tr, type MessageKey } from '@/lib/i18n.svelte'
   import { attachCameraKeys } from '@/lib/studio/keys'
   import { store } from '@/lib/studio/store.svelte'
 
   const keys = attachCameraKeys(store)
+
+  const modelLabel = (model: string): string => {
+    const key = `setup_model_${model}` as MessageKey
+
+    return key in m ? tr(key) : model
+  }
+
+  const modelOptions = $derived(store.models.map((value) => ({ value, label: modelLabel(value) })))
 </script>
 
 <svelte:window
@@ -30,7 +38,6 @@
         <div class="flex min-w-0 flex-col gap-1">
           <span class="t-caption text-fg-tertiary">{m.setup_kicker()}</span>
           <h1 class="t-heading text-fg-primary">{m.setup_title()}</h1>
-          <span class="t-body-sm text-fg-secondary">{m.setup_model({ model: store.model })}</span>
         </div>
         <Button
           variant="quiet"
@@ -41,6 +48,13 @@
           onclick={() => store.close()}
         />
       </div>
+      <Segmented
+        label={m.setup_model()}
+        value={store.model}
+        options={modelOptions}
+        block
+        onchange={(value) => store.pickModel(value)}
+      />
       <TargetSection />
     </header>
 
