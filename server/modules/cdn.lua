@@ -8,9 +8,53 @@ local MIMES <const> = {
   json = 'application/json',
 }
 
+local CHARS <const> = {}
+
+for i = 0, 63 do
+  CHARS[i] = ('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'):sub(i + 1, i + 1)
+end
+
 local function key()
   return GetConvar(StudioConfig.cdn.keyConvar, '')
 end
+
+--- Base64 of a byte string. PerformHttpRequest hands its body to curl as a
+--- C string, so any byte string holding a zero is cut there: every photo
+--- travels encoded and the CDN decodes it on arrival.
+---@param data string
+---@return string
+local function base64(data)
+  local out <const> = {}
+  local n = 0
+  local len <const> = #data
+
+  for i = 1, len - 2, 3 do
+    local a <const>, b <const>, c <const> = data:byte(i, i + 2)
+    local v <const> = (a << 16) | (b << 8) | c
+
+    n = n + 1
+    out[n] = CHARS[v >> 18] .. CHARS[(v >> 12) & 63] .. CHARS[(v >> 6) & 63] .. CHARS[v & 63]
+  end
+
+  local rest <const> = len % 3
+
+  if rest == 1 then
+    local v <const> = data:byte(len) << 16
+
+    n = n + 1
+    out[n] = CHARS[v >> 18] .. CHARS[(v >> 12) & 63] .. '=='
+  elseif rest == 2 then
+    local a <const>, b <const> = data:byte(len - 1, len)
+    local v <const> = (a << 16) | (b << 8)
+
+    n = n + 1
+    out[n] = CHARS[v >> 18] .. CHARS[(v >> 12) & 63] .. CHARS[(v >> 6) & 63] .. '='
+  end
+
+  return table.concat(out)
+end
+
+Studio.base64 = base64
 
 local function encode(value)
   return tostring(value):gsub('[^%w%-%._~]', function(char)
@@ -66,9 +110,10 @@ function Studio.cdnPut(name, body)
       error = type(decoded) == 'table' and type(decoded.error) == 'table' and decoded.error.code or ('http_%d'):format(status),
       detail = type(decoded) == 'table' and type(decoded.error) == 'table' and decoded.error.message or nil,
     })
-  end, 'PUT', body, {
+  end, 'PUT', base64(body), {
     Authorization = 'Bearer ' .. key(),
     ['Content-Type'] = Studio.cdnMime(name),
+    ['Content-Transfer-Encoding'] = 'base64',
   })
 
   SetTimeout(cdn.timeoutMs or 30000, function()

@@ -87,40 +87,47 @@ end
 function Studio.catalogFlush(model)
   local catalog <const> = catalogs[model]
 
-  if not catalog or catalog.dirty == 0 then
+  if not catalog or catalog.dirty == 0 or catalog.flushing then
     return
   end
 
-  local payload <const> = json.encode({
-    model = model,
-    updatedAt = os.date('!%Y-%m-%dT%H:%M:%SZ'),
-    entries = catalog.entries,
-  })
+  catalog.flushing = true
 
-  if Studio.cdnEnabled() then
-    local result <const> = Studio.cdnPut(('%s.index.json'):format(model), payload)
+  while catalog.dirty > 0 do
+    local dirty <const> = catalog.dirty
+    local payload <const> = json.encode({
+      model = model,
+      updatedAt = os.date('!%Y-%m-%dT%H:%M:%SZ'),
+      entries = catalog.entries,
+    })
 
-    if not result.ok then
-      Siku.log.error('studio.cdn_failed', ('Catalog index of %s could not be sent to the CDN: %s'):format(model, result.error), {
-        name = ('%s.index.json'):format(model),
-        bytes = #payload,
-        status = result.status,
-        reason = result.error,
-        detail = result.detail,
-      }, { outcome = 'failure' })
+    if Studio.cdnEnabled() then
+      local result <const> = Studio.cdnPut(('%s.index.json'):format(model), payload)
+
+      if not result.ok then
+        Siku.log.error('studio.cdn_failed', ('Catalog index of %s could not be sent to the CDN: %s'):format(model, result.error), {
+          name = ('%s.index.json'):format(model),
+          bytes = #payload,
+          status = result.status,
+          reason = result.error,
+          detail = result.detail,
+        }, { outcome = 'failure' })
+      end
     end
+
+    if not SaveResourceFile(resource, indexPath(model), payload, #payload) then
+      Siku.log.error('studio.results_failed', ('Catalog index of %s could not be written'):format(model), {
+        path = indexPath(model),
+        bytes = #payload,
+        entries = catalog.dirty,
+      }, { outcome = 'failure' })
+      break
+    end
+
+    catalog.dirty = catalog.dirty - dirty
   end
 
-  if SaveResourceFile(resource, indexPath(model), payload, #payload) then
-    catalog.dirty = 0
-    return
-  end
-
-  Siku.log.error('studio.results_failed', ('Catalog index of %s could not be written'):format(model), {
-    path = indexPath(model),
-    bytes = #payload,
-    entries = catalog.dirty,
-  }, { outcome = 'failure' })
+  catalog.flushing = false
 end
 
 --- Writes every changed index to disk.
