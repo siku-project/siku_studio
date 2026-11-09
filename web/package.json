@@ -1,0 +1,40 @@
+{
+  "name": "siku_studio-web",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "type-check": "svelte-check --tsconfig ./tsconfig.app.json --fail-on-warnings",
+    "lint": "oxlint . && eslint .",
+    "format": "prettier --write src/",
+    "check": "prettier --check src/ && bun run type-check && bun run lint && siku check src && siku doctor .",
+    "ai:sync": "siku ai sync .."
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@siku/ui": "git+https://github.com/siku-project/siku-ui.git#v1.19.0",
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "@tsconfig/svelte": "^5.0.8",
+    "@types/node": "^26.6.6",
+    "autoprefixer": "^10.6.2",
+    "eslint": "^10.14.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-oxlint": "^1.90.0",
+    "eslint-plugin-svelte": "^3.23.1",
+    "globals": "^17.13.0",
+    "jiti": "^2.7.0",
+    "oxlint": "^1.90.0",
+    "postcss": "^8.5.32",
+    "prettier": "^3.9.10",
+    "prettier-plugin-svelte": "^4.1.1",
+    "svelte": "^5.57.3",
+    "svelte-check": "^4.7.7",
+    "tailwindcss": "3",
+    "typescript": "6",
+    "typescript-eslint": "^8.72.1",
+    "vite": "^8.3.5"
+  }
+}
