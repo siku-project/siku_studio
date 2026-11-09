@@ -66,6 +66,7 @@ StudioConfig = {
       component_2 = { anchor = vector3(-0.055, 1.025, 0.665), fov = 30.0 },
       overlay_2 = { anchor = vector3(-0.065, 1.025, 0.675), fov = 15.0 },
       overlay_1 = { anchor = vector3(-0.065, 0.775, 0.675), fov = 20.0 },
+      overlay_10 = { anchor = vector3(-0.071, 1.578, 0.288), fov = 26.0 },
     },
 
     --- A preset can also be written as `{ anchor = vector3(right, forward,
@@ -177,7 +178,7 @@ StudioConfig = {
       { id = 'overlay_7', kind = 'overlay', index = 7, label = 'Sun damage', preset = 'head' },
       { id = 'overlay_8', kind = 'overlay', index = 8, label = 'Lipstick', preset = 'mouth', color = 2 },
       { id = 'overlay_9', kind = 'overlay', index = 9, label = 'Moles', preset = 'head' },
-      { id = 'overlay_10', kind = 'overlay', index = 10, label = 'Chest hair', preset = 'bust_bare', color = 1, bare = true },
+      { id = 'overlay_10', kind = 'overlay', index = 10, label = 'Chest hair', preset = 'overlay_10', color = 1, bare = true, hide = { components = { 1, 4, 5, 6, 7, 8, 9, 10, 11 }, props = { 0 } } },
       { id = 'overlay_11', kind = 'overlay', index = 11, label = 'Body blemishes', preset = 'bust_bare', bare = true },
       { id = 'overlay_12', kind = 'overlay', index = 12, label = 'Extra body blemishes', preset = 'bust_bare', bare = true },
       { id = 'haircolor', kind = 'haircolor', label = 'Hair colour', preset = 'head_wide' },
