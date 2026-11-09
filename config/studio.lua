@@ -70,6 +70,7 @@ StudioConfig = {
       overlay_8 = { anchor = vector3(-0.065, 0.575, 0.615), fov = 15.0 },
       overlay_4 = { anchor = vector3(-0.065, 0.775, 0.675), fov = 20.0 },
       overlay_5 = { anchor = vector3(-0.055, 0.675, 0.675), fov = 25.0 },
+      component_11 = { anchor = vector3(-0.051, 1.978, 0.228), fov = 21.0 },
     },
 
     --- A preset can also be written as `{ anchor = vector3(right, forward,
@@ -165,7 +166,7 @@ StudioConfig = {
       { id = 'component_8', kind = 'component', index = 8, label = 'Undershirt', preset = 'bust' },
       { id = 'component_9', kind = 'component', index = 9, label = 'Armor', preset = 'bust' },
       { id = 'component_10', kind = 'component', index = 10, label = 'Decal', preset = 'bust' },
-      { id = 'component_11', kind = 'component', index = 11, label = 'Top', preset = 'bust' },
+      { id = 'component_11', kind = 'component', index = 11, label = 'Top', preset = 'component_11', hide = { components = { 1, 2, 3, 5, 6, 7, 8, 9, 10 }, props = { 0 } } },
       { id = 'prop_0', kind = 'prop', index = 0, label = 'Hat', preset = 'head_wide' },
       { id = 'prop_1', kind = 'prop', index = 1, label = 'Glasses', preset = 'head' },
       { id = 'prop_2', kind = 'prop', index = 2, label = 'Ear', preset = 'head' },
