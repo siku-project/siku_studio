@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Divider, Select, Stepper } from '@siku/ui'
+  import { Select, Stepper } from '@siku/ui'
   import { m } from '@/lib/i18n.svelte'
   import { store } from '@/lib/studio/store.svelte'
 
@@ -10,7 +10,6 @@
 </script>
 
 <section class="flex flex-col gap-3">
-  <Divider label={m.setup_section_target()} />
   <Select
     label={m.setup_target()}
     value={store.target}
