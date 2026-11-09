@@ -10,7 +10,7 @@ In-game capture studio for FiveM. Create screenshots, GIFs and video clips of cl
 
 | Command | Effect |
 | --- | --- |
-| `/studio capture [target] [from] [to]` | Photographs everything the player's ped model offers, or one target (`component_11`, `prop_0`, `overlay_1`, `haircolor`, `eyecolor`...), optionally between two indexes, into `output/catalog/<model>/` with an `index.json`. Already photographed keys are skipped, so a stopped job resumes where it was. |
+| `/studio capture [target] [from] [to]` | Photographs everything the player's ped model offers, or one target (`component_11`, `prop_0`, `overlay_1`...), optionally between two indexes. Colours (hair, eyes, overlays) are never photographed: shapes come out in the base colour and the interfaces show colours as swatches. Photos go into `output/catalog/<model>/` with an `index.json`. Already photographed keys are skipped, so a stopped job resumes where it was. |
 | `/studio setup` | Opens the framing tool: the subject is dressed for one target, the camera moves on three axes without turning (arrows, Page Up / Page Down, zoom with the numpad or the wheel), parts of the body can be hidden, and « Générer la configuration » prints the lines to paste in `config/studio.lua` in the F8 console, the server console and the logs. |
 | `/studio probe` | Builds the scene, takes one photo and saves it in `output/probe/`. |
 | `/studio bench <variations\|readback\|encode\|upload\|save\|full\|all>` | Runs one benchmark, or all of them, and writes the results in `output/bench/`. |
