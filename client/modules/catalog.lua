@@ -146,7 +146,7 @@ local function photo(state, key)
       error(('snap failed for %s: %s'):format(key, tostring(snapped.error)), 0)
     end
 
-    first = snapped.id
+    first = snapped.snap
 
     Scene.setBackground('magenta')
     settle()

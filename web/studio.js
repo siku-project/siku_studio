@@ -39,7 +39,7 @@
   }
 
   function reply(id, data) {
-    return post('reply', Object.assign({ id }, data));
+    return post('reply', Object.assign({}, data, { id }));
   }
 
   function notify(name, data) {
@@ -554,7 +554,7 @@
       nextSnap += 1;
       snaps.set(id, pixels);
 
-      return { id, readMs: performance.now() - started };
+      return { snap: id, readMs: performance.now() - started };
     },
 
     async probe(message) {
