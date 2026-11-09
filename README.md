@@ -34,7 +34,7 @@ Every photo goes to the Siku CDN: `cdn.url` and `cdn.folder` in `config/studio.l
 
 ## Interface
 
-The NUI lives in `web/` (Svelte 5, Vite, `@siku/ui`) and is built into `web/dist/`, the folder the manifest serves. `cd web && bun install && bun run build` before starting the resource from a clone; the release archive ships the build. The capture page that reads the game view is part of the same bundle.
+The NUI lives in `web/` (Svelte 5, Vite, `@siku/ui`, Paraglide) and is built into `web/dist/`, the folder the manifest serves. `cd web && bun install && bun run build` before starting the resource from a clone; the release archive ships the build. `bun run dev` opens the dev boilerplate in a browser with mock data, `bun run check` runs locales, format, types and lints, `bun run test:unit` the tests. The interface strings live in the `web` block of `translations/<language>.lua`, the only place a string is written: `bun run locales` derives the Paraglide messages from them. The capture page that reads the game view is part of the same bundle.
 
 ## Transport
 
