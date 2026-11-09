@@ -128,6 +128,13 @@ StudioConfig = {
     --- while photographing their shapes.
     overlayColor = 0,
 
+    --- Colours given to the clone when it enters the studio, so every photo
+    --- starts from the same base: the hair colour, and the colour of every
+    --- overlay that takes one (facial hair, eyebrows, makeup, blush,
+    --- lipstick, chest hair). nil keeps the player's own colours. The
+    --- player's character is never touched, only the clone.
+    baseColors = { hair = 0, overlays = 0 },
+
     --- Number of eye colours the game offers.
     eyeColors = 32,
 
