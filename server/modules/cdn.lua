@@ -62,13 +62,12 @@ local function encode(value)
   end)
 end
 
---- Whether photos go to the CDN: a url, a folder and an API key are set.
+--- Whether photos go to the CDN: a url and an API key are set.
 ---@return boolean
 function Studio.cdnEnabled()
   local cdn <const> = StudioConfig.cdn
 
-  return type(cdn) == 'table' and type(cdn.url) == 'string' and #cdn.url > 0
-    and type(cdn.folder) == 'string' and #cdn.folder > 0 and #key() > 0
+  return type(cdn) == 'table' and type(cdn.url) == 'string' and #cdn.url > 0 and #key() > 0
 end
 
 --- The MIME type of a file, from its extension.
@@ -78,14 +77,16 @@ function Studio.cdnMime(name)
   return MIMES[(name:match('%.(%w+)$') or ''):lower()] or 'application/octet-stream'
 end
 
---- Sends one file to the CDN folder and waits for its answer.
----@param name string The file name in the folder.
+--- Sends one file to a folder of the CDN, created on the way when it is
+--- missing, and waits for the answer.
+---@param path string The folder path under the configured root folder, '' for the root itself.
+---@param name string The file name in that folder.
 ---@param body string The file bytes.
 ---@return table result { ok, status, id?, url?, error? }
-function Studio.cdnPut(name, body)
+function Studio.cdnPut(path, name, body)
   local cdn <const> = StudioConfig.cdn
-  local url <const> = ('%s%s?folder=%s&name=%s&overwrite=%s&mkdir=0'):format(
-    cdn.url, UPLOAD_PATH, encode(cdn.folder), encode(name), cdn.overwrite and '1' or '0'
+  local url <const> = ('%s%s?folder=%s&path=%s&name=%s&overwrite=%s&mkdir=1'):format(
+    cdn.url, UPLOAD_PATH, encode(cdn.folder or ''), encode(path or ''), encode(name), cdn.overwrite and '1' or '0'
   )
   local done <const> = promise.new()
   local settled = false

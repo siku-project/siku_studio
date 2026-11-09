@@ -112,9 +112,30 @@ function Studio.remove(path)
   return os.remove(('%s/%s'):format(GetResourcePath(resource), path)) == true
 end
 
---- Sends one photo of the running session to the CDN folder. Photos are
---- numbered in the order they arrive and replace the ones of the previous
---- session; the catalog index remembers which item each number shows.
+--- The CDN folder of a photo: catalog photos go to <target>/<model>, named
+--- after their key so each one is recognised by name; anything else goes
+--- to a folder named after its kind.
+---@param kind string
+---@param key string
+---@return string folder
+---@return string name
+local function cdnPlace(kind, key)
+  local name <const> = key:match('([^/]+)$') or key
+
+  if kind == 'catalog' then
+    local model <const> = key:match('^([^/]+)/')
+    local target <const> = Studio.catalogTargetOf(name)
+
+    if model and target then
+      return Studio.catalogFolder(target, model), name
+    end
+  end
+
+  return kind, name
+end
+
+--- Sends one photo of the running session to the CDN, in the folder of its
+--- target and model, replacing the photo of the previous session.
 ---@param session table The running session.
 ---@param kind string The output kind: probe or catalog.
 ---@param key string The key the page gave, kept in the index.
@@ -124,14 +145,14 @@ end
 local function storeOnCdn(session, kind, key, body, transport)
   session.photos = (session.photos or 0) + 1
 
-  local extension <const> = key:match('%.(%w+)$') or 'webp'
-  local name <const> = StudioConfig.cdn.numbered and ('%d.%s'):format(session.photos, extension) or key:match('([^/]+)$')
+  local folder <const>, name <const> = cdnPlace(kind, key)
   local started <const> = os.clock()
-  local result <const> = Studio.cdnPut(name, body)
+  local result <const> = Studio.cdnPut(folder, name, body)
   local ms <const> = (os.clock() - started) * 1000
 
   if not result.ok then
-    Siku.log.error('studio.cdn_failed', ('%s could not be sent to the CDN: %s'):format(name, result.error), {
+    Siku.log.error('studio.cdn_failed', ('%s/%s could not be sent to the CDN: %s'):format(folder, name, result.error), {
+      folder = folder,
       name = name,
       key = key,
       kind = kind,
@@ -151,7 +172,8 @@ local function storeOnCdn(session, kind, key, body, transport)
     Studio.catalogIndexed(key, #body, { name = name, id = result.id, url = result.url })
   end
 
-  Siku.log.debug('studio.cdn_stored', ('%s sent to the CDN as %s, %d bytes in %.0f ms'):format(key, name, #body, ms), {
+  Siku.log.debug('studio.cdn_stored', ('%s sent to the CDN as %s/%s, %d bytes in %.0f ms'):format(key, folder, name, #body, ms), {
+    folder = folder,
     name = name,
     key = key,
     kind = kind,
