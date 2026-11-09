@@ -21,10 +21,6 @@ body {
   pointer-events: none;
 }
 
-.studio-shell {
-  max-height: calc(100vh - 5rem);
-}
-
 .studio-axis {
   grid-template-columns: minmax(0, 1fr) auto auto;
 }

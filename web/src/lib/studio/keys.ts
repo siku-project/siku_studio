@@ -33,6 +33,12 @@ export const axesOf = (pressed: Record<string, boolean>): Axes => {
 const tracked = (code: string): boolean =>
   BINDINGS.some((binding) => binding.minus === code || binding.plus === code)
 
+const CONTROLS =
+  '.sk-select, .sk-stepper, .sk-seg, input, textarea, [role="listbox"], [role="combobox"], [role="spinbutton"]'
+
+/** A form control keeps its own arrows: the camera only listens when none has the focus. */
+const inControl = (): boolean => document.activeElement?.closest(CONTROLS) !== null
+
 export const attachCameraKeys = (target: Controlled) => {
   const pressed: Record<string, boolean> = {}
   let last = ''
@@ -55,7 +61,7 @@ export const attachCameraKeys = (target: Controlled) => {
         return
       }
 
-      if (!tracked(event.code)) {
+      if (!tracked(event.code) || inControl()) {
         return
       }
 
