@@ -1,6 +1,7 @@
 Setup = {}
 
 local PUSH_EVERY_MS <const> = 100
+local ALIVE_EVERY_MS <const> = 30000
 local FOV_MIN <const> = 5.0
 local FOV_MAX <const> = 90.0
 local COMPONENT_ICONS <const> = { [1] = 'mask', [2] = 'head', [3] = 'arm', [4] = 'pants', [5] = 'bag', [6] = 'shoe', [7] = 'necklace', [8] = 'shirt', [9] = 'vest', [10] = 'shirt', [11] = 'hanger' }
@@ -264,6 +265,7 @@ function Setup.run()
     closed = false,
     saved = 0,
     lastPush = 0,
+    lastAlive = GetGameTimer(),
   }
 
   local target <const> = targetById(config.target) or StudioConfig.catalog.targets[1]
@@ -294,6 +296,11 @@ function Setup.run()
 
   while state and not state.closed do
     Session.checkpoint()
+
+    if GetGameTimer() - state.lastAlive >= ALIVE_EVERY_MS then
+      state.lastAlive = GetGameTimer()
+      Session.alive()
+    end
 
     local input <const> = state.input
 
