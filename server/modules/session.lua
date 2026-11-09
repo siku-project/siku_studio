@@ -383,7 +383,7 @@ end, {
   description = 'Studio de capture : capture, setup, bench, probe, status, stop.',
   arguments = {
     { name = 'action', type = 'string', choices = { 'capture', 'setup', 'bench', 'probe', 'status', 'stop' }, help = 'capture, setup, bench, probe, status ou stop' },
-    { name = 'target', type = 'string', optional = true, help = 'capture : all ou une cible (component_11, prop_0, overlay_1) ; bench : variations, readback, encode, upload, save, full, all' },
+    { name = 'target', type = 'string', optional = true, help = 'capture : all, un jeu (multicharacter) ou une cible (component_11, prop_0, overlay_1) ; bench : variations, readback, encode, upload, save, full, all' },
     { name = 'from', type = 'integer', optional = true, min = 0, help = 'capture : premier index' },
     { name = 'to', type = 'integer', optional = true, min = 0, help = 'capture : dernier index' },
   },
