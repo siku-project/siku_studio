@@ -352,6 +352,11 @@ function Catalog.run(job)
     averageReadMs = state.photos > 0 and state.readMs / state.photos or 0,
     averageEncodeMs = stats.averageEncodeMs,
     averageUploadMs = stats.averageUploadMs,
+    matted = stats.matted or 0,
+    unmatted = stats.unmatted or 0,
+    retries = stats.retries or 0,
+    averageTransparent = stats.averageTransparent,
+    backgrounds = stats.backgrounds,
   }
 
   result.summary = ('%s: %d photos taken, %d skipped, %d uploaded, %d failed, %.1f photos/s, %d s'):format(
