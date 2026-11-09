@@ -23,7 +23,7 @@
     level="raised"
     padding="none"
     elevated
-    class="pointer-events-auto absolute bottom-10 left-12 top-10 flex w-[27rem] min-h-0 flex-col overflow-hidden"
+    class="pointer-events-auto absolute bottom-10 left-12 top-10 flex w-[27rem] min-h-0 flex-col overflow-clip"
   >
     <header class="flex flex-none flex-col gap-4 border-b border-border-subtle px-6 pb-5 pt-5">
       <div class="flex items-start justify-between gap-4">
