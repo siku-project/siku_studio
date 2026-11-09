@@ -236,7 +236,7 @@ local function snippet()
 end
 
 local function handle(name, handler)
-  Nui.on(name, function(data)
+  Nui.callback(name, function(data)
     if state and not state.closed then
       handler(data)
     end
@@ -281,9 +281,8 @@ function Setup.run()
     targets[i] = { id = entry.id, label = entry.label, kind = entry.kind, index = entry.index, count = countOf(entry) }
   end
 
-  SetNuiFocus(true, true)
+  SikuUI.open()
   Nui.send('setup.open', {
-    translations = Siku.locale.translations().web or {},
     model = state.model,
     targets = targets,
     parts = parts(),
@@ -330,8 +329,8 @@ function Setup.cleanup()
   state.closed = true
   state = nil
 
-  SetNuiFocus(false, false)
   Nui.send('setup.close')
+  SikuUI.close()
 end
 
 handle('setup.input', function(data)

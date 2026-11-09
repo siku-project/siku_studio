@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 
 .eslintcache
+
+# Paraglide compiles the messages here at build time
+src/paraglide
