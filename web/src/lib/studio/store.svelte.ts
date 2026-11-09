@@ -15,6 +15,7 @@ const PREFIX = `${RESOURCE}:nui:setup.`
 
 let open = $state(false)
 let model = $state('')
+let models = $state<string[]>([])
 let targets = $state<TargetInfo[]>([])
 let parts = $state<PartInfo[]>([])
 const DEFAULT_CAMERA: Camera = { x: 0, y: 0, z: 0, fov: 30, turn: 0 }
@@ -28,6 +29,7 @@ let snippet = $state('')
 interface SetupMessage {
   action?: unknown
   model?: unknown
+  models?: unknown
   targets?: unknown
   parts?: unknown
   camera?: unknown
@@ -44,7 +46,12 @@ const isTargets = (value: unknown): value is TargetInfo[] =>
 const isParts = (value: unknown): value is PartInfo[] =>
   Array.isArray(value) && value.every((entry) => typeof entry?.index === 'number')
 
+const isModels = (value: unknown): value is string[] =>
+  Array.isArray(value) && value.every((entry) => typeof entry === 'string')
+
 const applyState = (message: SetupMessage): void => {
+  if (typeof message.model === 'string') model = message.model
+  if (isTargets(message.targets)) targets = message.targets
   if (isCamera(message.camera)) camera = message.camera
   if (isParts(message.parts)) parts = message.parts
   if (typeof message.target === 'string') target = message.target
@@ -62,6 +69,9 @@ export const store = {
   },
   get model(): string {
     return model
+  },
+  get models(): string[] {
+    return models
   },
   get targets(): TargetInfo[] {
     return targets
@@ -127,6 +137,7 @@ export const store = {
   /** Fills the tool with what the game, or a mock, describes. */
   load(message: SetupMessage): void {
     model = typeof message.model === 'string' ? message.model : ''
+    models = isModels(message.models) ? message.models : model ? [model] : []
     targets = isTargets(message.targets) ? message.targets : []
     parts = isParts(message.parts) ? message.parts : []
     camera = isCamera(message.camera) ? message.camera : { ...DEFAULT_CAMERA }
@@ -134,6 +145,13 @@ export const store = {
     index = typeof message.index === 'number' ? message.index : 0
     step = isStepSize(message.step) ? message.step : 'normal'
     snippet = ''
+  },
+
+  pickModel(id: string): void {
+    if (id === model) return
+    model = id
+    snippet = ''
+    void game.pickModel(id)
   },
 
   pickTarget(id: string): void {

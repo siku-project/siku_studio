@@ -22,17 +22,16 @@ local function targetById(id)
   return nil
 end
 
-local function modelName()
-  local hash <const> = Subject.model()
+local function acceptsModel(model)
   local models <const> = StudioConfig.catalog.models
 
   for i = 1, #models do
-    if GetHashKey(models[i]) == hash then
-      return models[i]
+    if models[i] == model then
+      return true
     end
   end
 
-  return models[1]
+  return false
 end
 
 local function labelOf(kind, index)
@@ -149,10 +148,24 @@ local function move(right, closer, up)
   state.anchor = state.anchor + vector3(-right, -closer, up)
 end
 
-local function push()
+local function targetsList()
+  local list <const> = {}
+
+  for i = 1, #StudioConfig.catalog.targets do
+    local entry <const> = StudioConfig.catalog.targets[i]
+
+    list[i] = { id = entry.id, label = entry.label, kind = entry.kind, index = entry.index, count = countOf(entry) }
+  end
+
+  return list
+end
+
+local function push(full)
   state.lastPush = GetGameTimer()
 
   Nui.send('setup.state', {
+    model = state.model,
+    targets = full and targetsList() or nil,
     camera = camera(),
     parts = parts(),
     target = state.target.id,
@@ -162,7 +175,7 @@ local function push()
 end
 
 local function recenter()
-  state.anchor, state.fov, state.turn = Scene.anchorOf(Subject.ped(), state.target.preset)
+  state.anchor, state.fov, state.turn = Scene.anchorOf(Subject.ped(), state.target.preset, state.model)
 end
 
 local function setTarget(target)
@@ -231,7 +244,7 @@ local function snippet()
 
   return table.concat({
     ('-- siku_studio · /studio setup · %s · %s'):format(target.id, state.model),
-    '-- config/studio.lua, camera.presets :',
+    ('-- config/studio.lua, camera.models.%s :'):format(state.model),
     ('%s = { anchor = vector3(%.3f, %.3f, %.3f), fov = %.1f%s },'):format(name, state.anchor.x, state.anchor.y, state.anchor.z, state.fov, turn),
     ('-- config/studio.lua, catalog.targets, à la place de la ligne %s :'):format(target.id),
     ('{ %s },'):format(table.concat(fields, ', ')),
@@ -255,7 +268,7 @@ function Setup.run()
   local config <const> = StudioConfig.setup
 
   state = {
-    model = modelName(),
+    model = Subject.modelName() or Subject.playerModel(),
     target = nil,
     index = 0,
     anchor = vector3(0.0, 0.0, 0.0),
@@ -278,18 +291,11 @@ function Setup.run()
   applyLook()
   frame()
 
-  local targets <const> = {}
-
-  for i = 1, #StudioConfig.catalog.targets do
-    local entry <const> = StudioConfig.catalog.targets[i]
-
-    targets[i] = { id = entry.id, label = entry.label, kind = entry.kind, index = entry.index, count = countOf(entry) }
-  end
-
   SikuUI.open()
   Nui.send('setup.open', {
     model = state.model,
-    targets = targets,
+    models = StudioConfig.catalog.models,
+    targets = targetsList(),
     parts = parts(),
     camera = camera(),
     target = target.id,
@@ -405,6 +411,25 @@ handle('setup.part', function(data)
   set[index] = (not data.visible) or nil
   applyLook()
   push()
+end)
+
+handle('setup.model', function(data)
+  local model <const> = data.model
+
+  if type(model) ~= 'string' or not acceptsModel(model) or model == state.model then
+    return
+  end
+
+  state.model = model
+  state.hiddenProps = {}
+
+  local ped <const> = Subject.create(model)
+
+  Scene.frame(ped, nil, model)
+  recenter()
+  applyLook()
+  frame()
+  push(true)
 end)
 
 handle('setup.turn', function(data)

@@ -56,22 +56,6 @@ function Studio.catalogAccepts(model)
   return false
 end
 
---- The model folder name of a player's ped, nil when the catalog does not accept it.
----@param src number
----@return string|nil model
-function Studio.catalogModelOf(src)
-  local hash <const> = GetEntityModel(GetPlayerPed(src))
-  local models <const> = StudioConfig.catalog.models
-
-  for i = 1, #models do
-    if joaat(models[i]) == hash then
-      return models[i]
-    end
-  end
-
-  return nil
-end
-
 --- The target a catalog photo belongs to, from its file name
 --- (`component_11_12_0.webp` → `component_11`), nil when no target claims it.
 ---@param file string
@@ -99,13 +83,13 @@ function Studio.catalogFolder(target, model)
   return ('%s/%s'):format(target, model)
 end
 
---- The keys already photographed for a model, as { [key] = true }. Empty
---- when photos go to the CDN: every session shoots the whole target again
---- and replaces the previous photos, which keeps the CDN the only truth.
----@param model string
+--- The keys already photographed, for every model, as { [key] = true }.
+--- Empty when photos go to the CDN: every session shoots the whole target
+--- again and replaces the previous photos, which keeps the CDN the only
+--- truth.
 ---@return table done
 ---@return number count
-function Studio.catalogDone(model)
+function Studio.catalogDone()
   local done <const> = {}
   local count = 0
 
@@ -113,14 +97,17 @@ function Studio.catalogDone(model)
     return done, count
   end
 
+  local models <const> = StudioConfig.catalog.models
   local targets <const> = StudioConfig.catalog.targets
 
-  for i = 1, #targets do
-    local catalog <const> = load(model, targets[i].id)
+  for m = 1, #models do
+    for i = 1, #targets do
+      local catalog <const> = load(models[m], targets[i].id)
 
-    for file in pairs(catalog.entries) do
-      done[('%s/%s'):format(model, file)] = true
-      count = count + 1
+      for file in pairs(catalog.entries) do
+        done[('%s/%s'):format(models[m], file)] = true
+        count = count + 1
+      end
     end
   end
 

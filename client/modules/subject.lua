@@ -15,6 +15,7 @@ local RELEASE_PED_PRELOAD_PROP_DATA <const> = 0xF79F9DEF0AADE61A
 
 local ped = nil
 local original = nil
+local modelName = nil
 
 local function remember()
   local state <const> = { components = {}, props = {}, overlays = {} }
@@ -84,23 +85,67 @@ local function neutralize()
   end
 end
 
---- Clones the player into the studio, frozen, facing the camera, in a
---- fixed pose, in the studio's base colours, and remembers that look so
---- it can be restored between two targets.
----@return number ped The clone handle.
-function Subject.create()
-  if ped and DoesEntityExist(ped) then
-    return ped
-  end
-
-  local config <const> = StudioConfig.scene
+local function clonePlayer(config)
   local clone <const> = ClonePed(PlayerPedId(), config.heading, false, false)
 
   Siku.waitFor(function()
     return (clone ~= 0 and DoesEntityExist(clone)) or nil
   end, T('error_subject_never_cloned'), CLONE_TIMEOUT_MS)
 
-  ped = clone
+  return clone
+end
+
+local function spawn(config, model)
+  local hash <const> = GetHashKey(model)
+
+  Siku.streaming.requestModel(hash)
+
+  local created <const> = CreatePed(4, hash, config.origin.x, config.origin.y, config.origin.z, config.heading, false, false)
+
+  Siku.waitFor(function()
+    return (created ~= 0 and DoesEntityExist(created)) or nil
+  end, T('error_subject_never_cloned'), CLONE_TIMEOUT_MS)
+
+  SetModelAsNoLongerNeeded(hash)
+  SetPedHeadBlendData(created, 0, 0, 0, 0, 0, 0, 0.5, 0.5, 0.0, false)
+  SetPedComponentVariation(created, 0, 0, DEFAULT_TEXTURE, DEFAULT_PALETTE)
+
+  for component, drawable in pairs(StudioConfig.catalog.hidden[model] or {}) do
+    SetPedComponentVariation(created, component, drawable, DEFAULT_TEXTURE, DEFAULT_PALETTE)
+  end
+
+  for i = 1, #PROPS do
+    ClearPedProp(created, PROPS[i])
+  end
+
+  return created
+end
+
+--- Puts a subject of the given model into the studio, frozen, facing the
+--- camera, in a fixed pose, in the studio's base colours, and remembers
+--- that look so it can be restored between two targets. The player is
+--- cloned when they wear that model, so their own look is the base;
+--- otherwise a bare ped of the model is created with a neutral face. An
+--- existing subject of another model is removed first.
+---@param model string The model folder name, from catalog.models.
+---@return number ped The subject handle.
+function Subject.create(model)
+  if ped and DoesEntityExist(ped) and modelName == model then
+    return ped
+  end
+
+  Subject.destroy()
+
+  local config <const> = StudioConfig.scene
+  local player <const> = PlayerPedId()
+
+  if GetEntityModel(player) == GetHashKey(model) then
+    ped = clonePlayer(config)
+  else
+    ped = spawn(config, model)
+  end
+
+  modelName = model
 
   SetEntityAsMissionEntity(ped, true, true)
   SetEntityCoordsNoOffset(ped, config.origin.x, config.origin.y, config.origin.z, false, false, false)
@@ -137,10 +182,32 @@ function Subject.ped()
   return ped
 end
 
---- The model hash of the clone.
+--- The model hash of the subject.
 ---@return number
 function Subject.model()
   return GetEntityModel(ped)
+end
+
+--- The model folder name the subject was created for, nil without a subject.
+---@return string|nil
+function Subject.modelName()
+  return modelName
+end
+
+--- The model folder name the player wears when the catalog accepts it,
+--- the first catalog model otherwise.
+---@return string model
+function Subject.playerModel()
+  local hash <const> = GetEntityModel(PlayerPedId())
+  local models <const> = StudioConfig.catalog.models
+
+  for i = 1, #models do
+    if GetHashKey(models[i]) == hash then
+      return models[i]
+    end
+  end
+
+  return models[1]
 end
 
 --- How many drawables a component offers on the clone.
@@ -371,4 +438,5 @@ function Subject.destroy()
 
   ped = nil
   original = nil
+  modelName = nil
 end

@@ -9,7 +9,6 @@ return {
   studio_status = 'Session %s of %s, started %ds ago.',
   studio_unknown_bench = 'Unknown bench: %s. Choices: %s.',
   studio_in_game = 'This command runs in game.',
-  studio_model_unknown = 'Your character model is not supported by the catalog.',
   studio_output_missing = 'Output folders missing from the resource, see the Control Center.',
   error_scene_never_focused = 'The scene never finished loading.',
   error_subject_never_cloned = 'The character clone was never created.',
@@ -19,7 +18,9 @@ return {
   web = {
     ['setup_kicker'] = 'Studio',
     ['setup_title'] = 'Framing tool',
-    ['setup_model'] = 'Model {model}',
+    ['setup_model'] = 'Model',
+    ['setup_model_mp_m_freemode_01'] = 'Male',
+    ['setup_model_mp_f_freemode_01'] = 'Female',
     ['setup_close'] = 'Close',
     ['setup_section_target'] = 'Target',
     ['setup_target'] = 'This framing is for',

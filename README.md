@@ -10,7 +10,7 @@ In-game capture studio for FiveM. Create screenshots, GIFs and video clips of cl
 
 | Command | Effect |
 | --- | --- |
-| `/studio capture [target] [from] [to]` | Photographs everything the player's ped model offers, a named set of targets from `catalog.sets` (`multicharacter`: what the character creator shows), or one target (`component_11`, `prop_0`, `overlay_1`...), optionally between two indexes. Colours (hair, eyes, overlays) are never photographed: shapes come out in the base colour and the interfaces show colours as swatches. Photos go to the CDN (see below), or into `output/catalog/<model>/` with one `<target>.index.json` per target when no key is set; on disk, already photographed keys are skipped so a stopped job resumes where it was. |
+| `/studio capture [target] [from] [to]` | Photographs everything both catalog models offer, `mp_m_freemode_01` then `mp_f_freemode_01`, a named set of targets from `catalog.sets` (`multicharacter`: what the character creator shows), or one target (`component_11`, `prop_0`, `overlay_1`...), optionally between two indexes. Colours (hair, eyes, overlays) are never photographed: shapes come out in the base colour and the interfaces show colours as swatches. Photos go to the CDN (see below), or into `output/catalog/<model>/` with one `<target>.index.json` per target when no key is set; on disk, already photographed keys are skipped so a stopped job resumes where it was. |
 | `/studio setup` | Opens the framing tool: the subject is dressed for one target, the camera moves on three axes without turning (arrows, Page Up / Page Down, zoom with the numpad or the wheel), parts of the body can be hidden, and « Générer la configuration » prints the lines to paste in `config/studio.lua` in the F8 console, the server console and the logs. |
 | `/studio probe` | Builds the scene, takes one photo and saves it in `output/probe/`. |
 | `/studio bench <variations\|readback\|encode\|upload\|save\|full\|all>` | Runs one benchmark, or all of them, and writes the results in `output/bench/`. |
@@ -23,10 +23,10 @@ Every session, benchmark result and failure is sent to the Control Center under 
 
 ### Framing
 
-`/studio setup` is the way to adjust how a target is photographed. Pick the target, pick an item to look at, move the camera until the framing is right, turn the subject on itself for what sits on its back, hide the parts of the body that get in the way (they are hidden again during the capture of that target), then generate the configuration: a `camera.presets` line in the `anchor` form and the `catalog.targets` line to replace. Paste both in `config/studio.lua` and restart the resource.
+`/studio setup` is the way to adjust how a target is photographed. Pick the model (male or female), pick the target, pick an item to look at, move the camera until the framing is right, turn the subject on itself for what sits on its back, hide the parts of the body that get in the way (they are hidden again during the capture of that target), then generate the configuration: a line for the `camera.models.<model>` block in the `anchor` form and the `catalog.targets` line to replace. Paste both in `config/studio.lua` and restart the resource. Each model has its own framings; the targets and their hidden parts are shared.
 
 
-The targets, their camera framing and the frozen pose live in `config/studio.lua`. The subject is a clone of the player, so the catalog is made for the player's ped model, `mp_m_freemode_01` or `mp_f_freemode_01`. Each item is photographed on a green then a magenta background, and the two readings give an exact alpha: the WebP files are transparent, hair and glasses included.
+The targets, their camera framing and the frozen pose live in `config/studio.lua`. The subject is a clone of the player when they wear the model being photographed, so their own look is the base; for the other model a bare ped is created with a neutral face. Each item is photographed on a green then a magenta background, and the two readings give an exact alpha: the WebP files are transparent, hair and glasses included.
 
 ## CDN
 
