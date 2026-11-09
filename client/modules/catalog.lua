@@ -34,6 +34,18 @@ local function textureLimit(available)
   return wanted
 end
 
+local function targetById(id)
+  local all <const> = StudioConfig.catalog.targets
+
+  for i = 1, #all do
+    if all[i].id == id then
+      return all[i]
+    end
+  end
+
+  return nil
+end
+
 local function targetsFor(job)
   local all <const> = StudioConfig.catalog.targets
 
@@ -41,13 +53,19 @@ local function targetsFor(job)
     return all
   end
 
-  for i = 1, #all do
-    if all[i].id == job.target then
-      return { all[i] }
+  local set <const> = (StudioConfig.catalog.sets or {})[job.target]
+
+  if set then
+    local list <const> = {}
+
+    for i = 1, #set do
+      list[#list + 1] = targetById(set[i]) or error(('set %s names an unknown target %s'):format(job.target, tostring(set[i])), 0)
     end
+
+    return list
   end
 
-  error(('unknown catalog target %s'):format(tostring(job.target)), 0)
+  return { targetById(job.target) or error(('unknown catalog target %s'):format(tostring(job.target)), 0) }
 end
 
 local function range(job, count)
