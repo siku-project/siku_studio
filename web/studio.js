@@ -1,6 +1,9 @@
 (() => {
   const PREFIX = 'siku_studio:nui:';
   const PLACEHOLDER = [0, 0, 255, 255];
+  const CHANGE_RETRIES = 12;
+  const CHANGE_STRIDE = 64 * 4;
+  const CHANGE_THRESHOLD = 12;
   const CONCURRENT_UPLOADS = 20;
   const RANDOM_CHUNK = 65536;
   const HEALTH_TIMEOUT_MS = 3000;
@@ -27,7 +30,7 @@
   let mainContext = null;
 
   function emptyPipeline() {
-    return { pending: 0, encoded: 0, uploaded: 0, failed: 0, encodeMs: 0, uploadMs: 0, bytes: 0, errors: [] };
+    return { pending: 0, encoded: 0, uploaded: 0, failed: 0, encodeMs: 0, uploadMs: 0, bytes: 0, errors: [], matted: 0, unmatted: 0, transparent: 0, retries: 0, backgrounds: null };
   }
 
   function post(name, body) {
@@ -48,6 +51,18 @@
 
   function nextFrame() {
     return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+  }
+
+  function changed(before, after) {
+    let total = 0;
+    let n = 0;
+
+    for (let p = 0; p < before.length; p += CHANGE_STRIDE) {
+      total += Math.abs(after[p] - before[p]) + Math.abs(after[p + 1] - before[p + 1]) + Math.abs(after[p + 2] - before[p + 2]);
+      n += 1;
+    }
+
+    return total / n >= CHANGE_THRESHOLD;
   }
 
   function nextTick() {
@@ -286,7 +301,7 @@
         jobs.delete(event.data.id);
 
         if (event.data.ok) {
-          job.resolve({ buffer: event.data.buffer, bytes: event.data.bytes, ms: event.data.ms });
+          job.resolve({ buffer: event.data.buffer, bytes: event.data.bytes, ms: event.data.ms, stats: event.data.stats || null });
         } else {
           job.reject(new Error(event.data.error));
         }
@@ -480,6 +495,16 @@
         pipeline.encoded += 1;
         pipeline.encodeMs += encoded.ms;
         pipeline.bytes += encoded.bytes;
+
+        if (encoded.stats) {
+          if (encoded.stats.matted) {
+            pipeline.matted += 1;
+            pipeline.transparent += encoded.stats.transparent;
+            pipeline.backgrounds = encoded.stats.backgrounds;
+          } else {
+            pipeline.unmatted += 1;
+          }
+        }
 
         return upload(kind, key, encoded.buffer);
       })
@@ -757,14 +782,24 @@
         }
       }
 
-      const pixels = readSync(size, size, cropRegion());
+      let pixels = readSync(size, size, cropRegion());
+      let retries = 0;
+
+      while (first && retries < CHANGE_RETRIES && !changed(first, pixels)) {
+        retries += 1;
+        await nextFrame();
+        pixels = readSync(size, size, cropRegion());
+      }
+
+      pipeline.retries += retries;
+
       const readMs = performance.now() - started;
 
       enqueue(message.kind || 'bench', message.key, first || pixels, size, size, first ? pixels : null);
 
       await drained();
 
-      return { readMs, pending: pipeline.pending };
+      return { readMs, retries, pending: pipeline.pending };
     },
 
     async flush() {
@@ -776,6 +811,7 @@
         averageEncodeMs: pipeline.encoded ? pipeline.encodeMs / pipeline.encoded : 0,
         averageUploadMs: pipeline.uploaded ? pipeline.uploadMs / pipeline.uploaded : 0,
         averageBytes: pipeline.encoded ? Math.round(pipeline.bytes / pipeline.encoded) : 0,
+        averageTransparent: pipeline.matted ? pipeline.transparent / pipeline.matted : 0,
       });
 
       pipeline = emptyPipeline();
