@@ -64,6 +64,7 @@ StudioConfig = {
       wrist = { bone = 'SKEL_L_Hand', distance = 0.5, height = 0.05, fov = 20.0 },
       full = { bone = 'SKEL_Pelvis', distance = 3.6, height = 0.1, fov = 40.0 },
       component_2 = { anchor = vector3(-0.055, 1.025, 0.665), fov = 30.0 },
+      overlay_2 = { anchor = vector3(-0.065, 1.025, 0.675), fov = 15.0 },
     },
 
     --- A preset can also be written as `{ anchor = vector3(right, forward,
@@ -167,7 +168,7 @@ StudioConfig = {
       { id = 'prop_7', kind = 'prop', index = 7, label = 'Bracelet', preset = 'wrist' },
       { id = 'overlay_0', kind = 'overlay', index = 0, label = 'Blemishes', preset = 'head' },
       { id = 'overlay_1', kind = 'overlay', index = 1, label = 'Facial hair', preset = 'head', color = 1 },
-      { id = 'overlay_2', kind = 'overlay', index = 2, label = 'Eyebrows', preset = 'head', color = 1 },
+      { id = 'overlay_2', kind = 'overlay', index = 2, label = 'Eyebrows', preset = 'overlay_2', color = 1, hide = { components = { 1, 4, 5, 6, 7, 8, 9, 10, 11 }, props = { 0 } } },
       { id = 'overlay_3', kind = 'overlay', index = 3, label = 'Ageing', preset = 'head' },
       { id = 'overlay_4', kind = 'overlay', index = 4, label = 'Makeup', preset = 'head', color = 2 },
       { id = 'overlay_5', kind = 'overlay', index = 5, label = 'Blush', preset = 'head', color = 2 },
