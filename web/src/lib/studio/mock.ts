@@ -6,8 +6,6 @@ export const MOCK_TARGETS: TargetInfo[] = [
   { id: 'component_11', label: 'Top', kind: 'component', index: 11, count: 412 },
   { id: 'prop_0', label: 'Hat', kind: 'prop', index: 0, count: 160 },
   { id: 'overlay_1', label: 'Facial hair', kind: 'overlay', index: 1, count: 29 },
-  { id: 'haircolor', label: 'Hair colour', kind: 'haircolor', count: 64 },
-  { id: 'eyecolor', label: 'Eye colour', kind: 'eyecolor', count: 32 },
 ]
 
 export const MOCK_PARTS: PartInfo[] = [
