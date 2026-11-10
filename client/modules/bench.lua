@@ -313,10 +313,35 @@ function Bench.full()
 end
 
 --- Checks the whole chain once: page, game view binding, one photo saved.
+--- With the double matte, the two readings are saved next to the result
+--- so the cut can be judged on the real pictures.
 ---@return string summary
 function Bench.probe()
+  local key <const> = ('%d'):format(GetCloudTimeAsInt())
+  local first = nil
+
+  if StudioConfig.capture.matte == 'double' then
+    Scene.setBackground('green')
+    settle()
+
+    local snapped <const> = Nui.request('snap', {}, PROBE_TIMEOUT_MS)
+
+    if not snapped.ok then
+      error(('probe snap failed in the capture page: %s'):format(tostring(snapped.error)), 0)
+    end
+
+    first = snapped.snap
+
+    Scene.setBackground('magenta')
+    settle()
+  else
+    settle()
+  end
+
   local reply <const> = Nui.request('probe', {
-    key = ('%d.webp'):format(GetCloudTimeAsInt()),
+    key = key,
+    first = first,
+    labels = { 'green', 'magenta' },
   }, PROBE_TIMEOUT_MS)
 
   if not reply.ok then
