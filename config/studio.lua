@@ -197,6 +197,15 @@ StudioConfig = {
     --- upload queue to drain a little.
     backlog = 8,
 
+    --- Longest wait (ms) for an item to finish loading before its photo
+    --- is given up. A given-up photo is logged (`studio.photo_skipped`)
+    --- and the capture moves on to the next item.
+    changeTimeoutMs = 5000,
+
+    --- Photos that may fail one after the other (item never loaded, page
+    --- not answering) before the session gives up for good.
+    failuresInARow = 10,
+
     --- Everything photographed, in order. kind: component, prop, overlay,
     --- haircolor, eyecolor. Colours are not photographed (the interfaces
     --- show them as swatches), so no haircolor or eyecolor target is
