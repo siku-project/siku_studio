@@ -19,9 +19,12 @@ StudioConfig = {
     --- Heading of the subject, facing the camera.
     heading = 180.0,
 
-    --- Backgrounds the cube can take, by name.
+    --- Backgrounds the cube can take, by name. Green and magenta are the
+    --- pair of the double matte: they share the same linear luminance, so
+    --- the exposure and the glow of the game treat both readings alike
+    --- and only the colour changes between them.
     backgrounds = {
-      green = { 0, 255, 0 },
+      green = { 0, 169, 0 },
       magenta = { 255, 0, 255 },
       black = { 0, 0, 0 },
       white = { 255, 255, 255 },
@@ -256,12 +259,17 @@ StudioConfig = {
     quality = 0.92,
     lossless = false,
 
-    --- Frames rendered after a change of subject before reading the screen.
+    --- Frames rendered after a change of subject or of background before
+    --- the page starts reading the screen. The page then keeps reading
+    --- until two consecutive frames match, up to thirty frames, so the
+    --- exposure and the reflections have caught up with the change.
     settleFrames = 2,
 
     --- How the subject is cut from the background. 'double' photographs
     --- every item twice, on the green then the magenta background, and
-    --- computes an exact alpha from the difference. 'none' keeps the
+    --- computes an exact alpha from the difference; the colour comes from
+    --- both readings so a glow one background casts more than the other
+    --- leaves a neutral shade rather than a tint. 'none' keeps the
     --- background.
     matte = 'double',
 

@@ -4,6 +4,9 @@ export function startCapture() {
   const CHANGE_RETRIES = 12
   const CHANGE_STRIDE = 64 * 4
   const CHANGE_THRESHOLD = 12
+  const STABLE_RETRIES = 30
+  const STABLE_PIXEL = 6
+  const STABLE_SHARE = 0.002
   const CONCURRENT_UPLOADS = 20
   const RANDOM_CHUNK = 65536
   const HEALTH_TIMEOUT_MS = 3000
@@ -47,6 +50,7 @@ export function startCapture() {
       unmatted: 0,
       transparent: 0,
       retries: 0,
+      settled: 0,
       backgrounds: null,
     }
   }
@@ -71,19 +75,53 @@ export function startCapture() {
     return new Promise((resolve) => requestAnimationFrame(() => resolve()))
   }
 
-  function changed(before, after) {
+  function difference(before, after) {
     let total = 0
+    let moved = 0
     let n = 0
 
     for (let p = 0; p < before.length; p += CHANGE_STRIDE) {
-      total +=
+      const d =
         Math.abs(after[p] - before[p]) +
         Math.abs(after[p + 1] - before[p + 1]) +
         Math.abs(after[p + 2] - before[p + 2])
+
+      total += d
+
+      if (d > STABLE_PIXEL) {
+        moved += 1
+      }
+
       n += 1
     }
 
-    return total / n >= CHANGE_THRESHOLD
+    return { mean: total / n, moved: moved / n }
+  }
+
+  function changed(before, after) {
+    return difference(before, after).mean >= CHANGE_THRESHOLD
+  }
+
+  async function settled(pixels) {
+    const size = config.size
+    let current = pixels
+    let frames = 0
+
+    while (frames < STABLE_RETRIES) {
+      await nextFrame()
+
+      const next = readSync(size, size, cropRegion())
+
+      frames += 1
+
+      if (difference(current, next).moved <= STABLE_SHARE) {
+        return { pixels: next, frames }
+      }
+
+      current = next
+    }
+
+    return { pixels: current, frames }
   }
 
   function nextTick() {
@@ -667,37 +705,97 @@ export function startCapture() {
     async snap() {
       const size = config.size
       const started = performance.now()
-      const pixels = readSync(size, size, cropRegion())
+      const stable = await settled(readSync(size, size, cropRegion()))
       const id = nextSnap
 
       nextSnap += 1
-      snaps.set(id, pixels)
+      snaps.set(id, stable.pixels)
+      pipeline.settled += stable.frames
 
-      return { snap: id, readMs: performance.now() - started }
+      return { snap: id, readMs: performance.now() - started, settled: stable.frames }
     },
 
     async probe(message) {
       const size = config.size
       const readStarted = performance.now()
-      const pixels = await readAsync(size, size, cropRegion())
+      let first = null
+
+      if (typeof message.first === 'number') {
+        first = snaps.get(message.first)
+        snaps.delete(message.first)
+
+        if (!first) {
+          throw new Error(`unknown snap ${message.first}`)
+        }
+      }
+
+      let pixels = readSync(size, size, cropRegion())
+      let retries = 0
+
+      while (first && retries < CHANGE_RETRIES && !changed(first, pixels)) {
+        retries += 1
+        await nextFrame()
+        pixels = readSync(size, size, cropRegion())
+      }
+
+      const stable = await settled(pixels)
+
+      pixels = stable.pixels
+
       const readMs = performance.now() - readStarted
       const placeholder = isPlaceholder(pixels)
-      const encoded = await encodeInWorker(pixels, size, size, config.quality, config.lossless)
-      const uploaded = await upload('probe', message.key, encoded.buffer)
+      const key = `${message.key}.webp`
+      const readings = []
+
+      if (first) {
+        const labels = Array.isArray(message.labels) ? message.labels : ['a', 'b']
+        const onA = await encodeInWorker(first.slice(), size, size, config.quality, config.lossless)
+        const onB = await encodeInWorker(
+          pixels.slice(),
+          size,
+          size,
+          config.quality,
+          config.lossless,
+        )
+
+        readings.push(`${message.key}_${labels[0]}.webp`, `${message.key}_${labels[1]}.webp`)
+        await upload('probe', readings[0], onA.buffer)
+        await upload('probe', readings[1], onB.buffer)
+      }
+
+      const encoded = await encodeInWorker(
+        first || pixels,
+        size,
+        size,
+        config.quality,
+        config.lossless,
+        first ? pixels : null,
+      )
+      const uploaded = await upload('probe', key, encoded.buffer)
       const result = {
         size,
         gameView,
         placeholder,
         webp: await webpSupported(),
         readMs,
+        retries,
+        settled: stable.frames,
         encodeMs: encoded.ms,
         uploadMs: uploaded.ms,
         writeMs: uploaded.writeMs,
         bytes: encoded.bytes,
-        key: message.key,
+        key,
+        readings,
+        matte: encoded.stats,
       }
 
-      result.summary = `${gameView && !placeholder ? 'game view bound' : 'GAME VIEW NOT BOUND'}, ${size}px read ${readMs.toFixed(1)} ms, encoded ${encoded.bytes} B in ${encoded.ms.toFixed(1)} ms, uploaded in ${uploaded.ms.toFixed(1)} ms`
+      result.summary = `${gameView && !placeholder ? 'game view bound' : 'GAME VIEW NOT BOUND'}, ${size}px read ${readMs.toFixed(1)} ms after ${stable.frames} frames, encoded ${encoded.bytes} B in ${encoded.ms.toFixed(1)} ms, uploaded in ${uploaded.ms.toFixed(1)} ms`
+
+      if (encoded.stats) {
+        result.summary += encoded.stats.matted
+          ? `, matted (${(encoded.stats.transparent * 100).toFixed(0)}% transparent, backgrounds ${encoded.stats.backgrounds.a.join('/')} and ${encoded.stats.backgrounds.b.join('/')})`
+          : ', NOT MATTED (both readings identical)'
+      }
 
       return { result }
     },
@@ -908,7 +1006,11 @@ export function startCapture() {
         pixels = readSync(size, size, cropRegion())
       }
 
+      const stable = await settled(pixels)
+
+      pixels = stable.pixels
       pipeline.retries += retries
+      pipeline.settled += stable.frames
 
       const readMs = performance.now() - started
 
@@ -923,7 +1025,7 @@ export function startCapture() {
 
       await drained()
 
-      return { readMs, retries, pending: pipeline.pending }
+      return { readMs, retries, settled: stable.frames, pending: pipeline.pending }
     },
 
     async flush() {
@@ -936,6 +1038,7 @@ export function startCapture() {
         averageUploadMs: pipeline.uploaded ? pipeline.uploadMs / pipeline.uploaded : 0,
         averageBytes: pipeline.encoded ? Math.round(pipeline.bytes / pipeline.encoded) : 0,
         averageTransparent: pipeline.matted ? pipeline.transparent / pipeline.matted : 0,
+        averageSettled: pipeline.encoded ? pipeline.settled / pipeline.encoded : 0,
       })
 
       pipeline = emptyPipeline()

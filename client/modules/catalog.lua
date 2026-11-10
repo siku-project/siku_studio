@@ -406,6 +406,7 @@ function Catalog.run(job)
     matted = stats.matted or 0,
     unmatted = stats.unmatted or 0,
     retries = stats.retries or 0,
+    averageSettled = stats.averageSettled,
     averageTransparent = stats.averageTransparent,
     backgrounds = stats.backgrounds,
   }
