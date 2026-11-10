@@ -17,11 +17,13 @@ local function waitFinished(check, timeoutMs)
 
   while not check() do
     if GetGameTimer() - started > timeoutMs then
-      error(T('error_change_never_shown'), 0)
+      return false
     end
 
     Wait(0)
   end
+
+  return true
 end
 
 local function textureLimit(available)
@@ -196,8 +198,50 @@ local function photo(state, key)
   end
 end
 
+local function shoot(state, key, prepare)
+  if state.done[key] then
+    state.skipped = state.skipped + 1
+    return
+  end
+
+  local ok <const>, err <const> = pcall(function()
+    if not prepare() then
+      error(T('error_change_never_shown'), 0)
+    end
+
+    photo(state, key)
+  end)
+
+  if ok then
+    state.streak = 0
+    return
+  end
+
+  if err == 'stopped' then
+    error(err, 0)
+  end
+
+  local reason <const> = tostring(err)
+
+  state.missed = state.missed + 1
+  state.streak = state.streak + 1
+
+  Siku.log.warn('studio.photo_skipped', ('Photo %s skipped: %s'):format(key, reason), {
+    key = key,
+    model = state.model,
+    target = state.target,
+    reason = reason,
+    streak = state.streak,
+    missed = state.missed,
+  })
+
+  if state.streak >= StudioConfig.catalog.failuresInARow then
+    error(('%d photos failed in a row, the last one %s: %s'):format(state.streak, key, reason), 0)
+  end
+end
+
 local function runComponent(state, target, from, to)
-  local timeout <const> = StudioConfig.bench.changeTimeoutMs
+  local timeout <const> = StudioConfig.catalog.changeTimeoutMs
 
   for drawable = from, to do
     local textures <const> = textureLimit(Subject.textures(target.index, drawable))
@@ -205,20 +249,22 @@ local function runComponent(state, target, from, to)
     for texture = 0, textures - 1 do
       local key <const> = ('%s/component_%d_%d_%d.webp'):format(state.model, target.index, drawable, texture)
 
-      if not state.done[key] then
+      shoot(state, key, function()
         Subject.setVariation(target.index, drawable, texture)
         Subject.preload(target.index, drawable, texture)
-        waitFinished(Subject.preloadFinished, timeout)
-        Subject.releasePreload()
-      end
 
-      photo(state, key)
+        local shown <const> = waitFinished(Subject.preloadFinished, timeout)
+
+        Subject.releasePreload()
+
+        return shown
+      end)
     end
   end
 end
 
 local function runProp(state, target, from, to)
-  local timeout <const> = StudioConfig.bench.changeTimeoutMs
+  local timeout <const> = StudioConfig.catalog.changeTimeoutMs
 
   for drawable = from, to do
     local textures <const> = textureLimit(Subject.propTextures(target.index, drawable))
@@ -226,14 +272,16 @@ local function runProp(state, target, from, to)
     for texture = 0, textures - 1 do
       local key <const> = ('%s/prop_%d_%d_%d.webp'):format(state.model, target.index, drawable, texture)
 
-      if not state.done[key] then
+      shoot(state, key, function()
         Subject.setProp(target.index, drawable, texture)
         Subject.preloadProp(target.index, drawable, texture)
-        waitFinished(Subject.preloadPropFinished, timeout)
-        Subject.releasePreloadProp()
-      end
 
-      photo(state, key)
+        local shown <const> = waitFinished(Subject.preloadPropFinished, timeout)
+
+        Subject.releasePreloadProp()
+
+        return shown
+      end)
     end
   end
 
@@ -244,12 +292,12 @@ local function runOverlay(state, target, from, to)
   for value = from, to do
     local key <const> = ('%s/overlay_%d_%d.webp'):format(state.model, target.index, value)
 
-    if not state.done[key] then
+    shoot(state, key, function()
       Subject.setOverlay(target.index, value, target.color, StudioConfig.catalog.overlayColor)
       settle(OVERLAY_SETTLE_FRAMES)
-    end
 
-    photo(state, key)
+      return true
+    end)
   end
 end
 
@@ -257,12 +305,12 @@ local function runHairColor(state, target, from, to)
   for color = from, to do
     local key <const> = ('%s/haircolor_%d.webp'):format(state.model, color)
 
-    if not state.done[key] then
+    shoot(state, key, function()
       Subject.setHairColor(color)
       settle(OVERLAY_SETTLE_FRAMES)
-    end
 
-    photo(state, key)
+      return true
+    end)
   end
 end
 
@@ -270,12 +318,12 @@ local function runEyeColor(state, target, from, to)
   for color = from, to do
     local key <const> = ('%s/eyecolor_%d.webp'):format(state.model, color)
 
-    if not state.done[key] then
+    shoot(state, key, function()
       Subject.setEyeColor(color)
       settle(OVERLAY_SETTLE_FRAMES)
-    end
 
-    photo(state, key)
+      return true
+    end)
   end
 end
 
@@ -357,6 +405,8 @@ function Catalog.run(job)
     done = job.done or {},
     photos = 0,
     skipped = 0,
+    missed = 0,
+    streak = 0,
     readMs = 0,
     target = nil,
     startedAt = GetGameTimer(),
@@ -393,6 +443,7 @@ function Catalog.run(job)
     planned = planned,
     photos = state.photos,
     skipped = state.skipped,
+    missed = state.missed,
     uploaded = stats.uploaded or 0,
     failed = stats.failed or 0,
     errors = stats.errors,
@@ -411,8 +462,8 @@ function Catalog.run(job)
     backgrounds = stats.backgrounds,
   }
 
-  result.summary = ('%d photos taken (%s), %d skipped, %d uploaded, %d failed, %.1f photos/s, %d s'):format(
-    state.photos, table.concat(parts, ', '), state.skipped, result.uploaded, result.failed, result.photosPerSecond, math.floor(totalMs / 1000)
+  result.summary = ('%d photos taken (%s), %d skipped, %d never shown, %d uploaded, %d failed, %.1f photos/s, %d s'):format(
+    state.photos, table.concat(parts, ', '), state.skipped, state.missed, result.uploaded, result.failed, result.photosPerSecond, math.floor(totalMs / 1000)
   )
 
   Session.report('capture', result)
