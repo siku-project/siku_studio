@@ -1,18 +1,19 @@
 local INDEX_FILE <const> = 'index.json'
 local FLUSH_EVERY <const> = 25
+local PHOTO_SUFFIX <const> = '^[%d_]+%.webp$'
 
 local resource <const> = GetCurrentResourceName()
 local catalogs <const> = {}
 
-local function indexPath(model, target)
-  return ('%s/catalog/%s/%s.%s'):format(StudioConfig.output.root, model, target, INDEX_FILE)
+local function indexPath(folder, name)
+  return ('%s/catalog/%s/%s.%s'):format(StudioConfig.output.root, folder, name, INDEX_FILE)
 end
 
-local function targetById(id)
+local function targetByName(name)
   local targets <const> = StudioConfig.catalog.targets
 
   for i = 1, #targets do
-    if targets[i].id == id then
+    if targets[i].name == name then
       return targets[i]
     end
   end
@@ -20,54 +21,59 @@ local function targetById(id)
   return nil
 end
 
-local function load(model, target)
-  local id <const> = ('%s/%s'):format(model, target)
+local function modelOf(folder)
+  for model, name in pairs(StudioConfig.catalog.folders) do
+    if name == folder then
+      return model
+    end
+  end
+
+  return nil
+end
+
+local function load(folder, name)
+  local id <const> = ('%s/%s'):format(folder, name)
   local catalog = catalogs[id]
 
   if catalog then
     return catalog
   end
 
-  local raw <const> = LoadResourceFile(resource, indexPath(model, target))
+  local raw <const> = LoadResourceFile(resource, indexPath(folder, name))
   local decoded = raw and json.decode(raw) or nil
 
   if type(decoded) ~= 'table' or type(decoded.entries) ~= 'table' then
     decoded = { entries = {} }
   end
 
-  catalog = { model = model, target = target, entries = decoded.entries, dirty = 0 }
+  catalog = { folder = folder, name = name, entries = decoded.entries, dirty = 0 }
   catalogs[id] = catalog
 
   return catalog
 end
 
---- Whether a model folder name is one the catalog accepts.
----@param model string
+--- Whether a model folder name (`male`, `female`) is one the catalog
+--- accepts.
+---@param folder string
 ---@return boolean
-function Studio.catalogAccepts(model)
-  local models <const> = StudioConfig.catalog.models
-
-  for i = 1, #models do
-    if models[i] == model then
-      return true
-    end
-  end
-
-  return false
+function Studio.catalogAccepts(folder)
+  return modelOf(folder) ~= nil
 end
 
 --- The target a catalog photo belongs to, from its file name
---- (`component_11_12_0.webp` → `component_11`), nil when no target claims it.
+--- (`hair_12_0.webp` → `hair`, `beard_7.webp` → `beard`), nil when no
+--- target claims it.
 ---@param file string
----@return string|nil target
+---@return string|nil name
 function Studio.catalogTargetOf(file)
   local targets <const> = StudioConfig.catalog.targets
 
   for i = 1, #targets do
-    local id <const> = targets[i].id
+    local name <const> = targets[i].name
+    local prefix <const> = name .. '_'
 
-    if file:sub(1, #id + 1) == id .. '_' then
-      return id
+    if file:sub(1, #prefix) == prefix and file:sub(#prefix + 1):match(PHOTO_SUFFIX) then
+      return name
     end
   end
 
@@ -75,12 +81,12 @@ function Studio.catalogTargetOf(file)
 end
 
 --- The CDN folder of a target's photos for a model: the target at the root,
---- the model inside it.
----@param target string
----@param model string
+--- the model inside it (`hair/male`).
+---@param name string The target name.
+---@param folder string The model folder.
 ---@return string path
-function Studio.catalogFolder(target, model)
-  return ('%s/%s'):format(target, model)
+function Studio.catalogFolder(name, folder)
+  return ('%s/%s'):format(name, folder)
 end
 
 --- The keys already photographed, for every model, as { [key] = true }.
@@ -101,11 +107,13 @@ function Studio.catalogDone()
   local targets <const> = StudioConfig.catalog.targets
 
   for m = 1, #models do
+    local folder <const> = StudioConfig.catalog.folders[models[m]]
+
     for i = 1, #targets do
-      local catalog <const> = load(models[m], targets[i].id)
+      local catalog <const> = load(folder, targets[i].name)
 
       for file in pairs(catalog.entries) do
-        done[('%s/%s'):format(models[m], file)] = true
+        done[('%s/%s'):format(folder, file)] = true
         count = count + 1
       end
     end
@@ -121,25 +129,26 @@ local function flush(catalog)
 
   catalog.flushing = true
 
-  local model <const>, target <const> = catalog.model, catalog.target
-  local entry <const> = targetById(target)
+  local folder <const>, name <const> = catalog.folder, catalog.name
+  local entry <const> = targetByName(name)
 
   while catalog.dirty > 0 do
     local dirty <const> = catalog.dirty
     local payload <const> = json.encode({
-      model = model,
-      target = entry and { id = entry.id, kind = entry.kind, index = entry.index, label = entry.label } or { id = target },
+      model = modelOf(folder),
+      folder = folder,
+      target = entry and { id = entry.id, name = entry.name, kind = entry.kind, index = entry.index, label = entry.label } or { name = name },
       updatedAt = os.date('!%Y-%m-%dT%H:%M:%SZ'),
       entries = catalog.entries,
     })
 
     if Studio.cdnEnabled() then
-      local folder <const> = Studio.catalogFolder(target, model)
-      local result <const> = Studio.cdnPut(folder, INDEX_FILE, payload)
+      local path <const> = Studio.catalogFolder(name, folder)
+      local result <const> = Studio.cdnPut(path, INDEX_FILE, payload)
 
       if not result.ok then
-        Siku.log.error('studio.cdn_failed', ('Catalog index %s/%s could not be sent to the CDN: %s'):format(folder, INDEX_FILE, result.error), {
-          folder = folder,
+        Siku.log.error('studio.cdn_failed', ('Catalog index %s/%s could not be sent to the CDN: %s'):format(path, INDEX_FILE, result.error), {
+          folder = path,
           name = INDEX_FILE,
           bytes = #payload,
           status = result.status,
@@ -149,9 +158,9 @@ local function flush(catalog)
       end
     end
 
-    if not SaveResourceFile(resource, indexPath(model, target), payload, #payload) then
-      Siku.log.error('studio.results_failed', ('Catalog index of %s/%s could not be written'):format(model, target), {
-        path = indexPath(model, target),
+    if not SaveResourceFile(resource, indexPath(folder, name), payload, #payload) then
+      Siku.log.error('studio.results_failed', ('Catalog index of %s/%s could not be written'):format(folder, name), {
+        path = indexPath(folder, name),
         bytes = #payload,
         entries = catalog.dirty,
       }, { outcome = 'failure' })
@@ -165,10 +174,12 @@ local function flush(catalog)
 end
 
 --- Writes the indexes of a model when they changed.
----@param model string
+---@param model string The ped model name.
 function Studio.catalogFlush(model)
+  local folder <const> = StudioConfig.catalog.folders[model]
+
   for _, catalog in pairs(catalogs) do
-    if catalog.model == model then
+    if catalog.folder == folder then
       flush(catalog)
     end
   end
@@ -182,23 +193,23 @@ function Studio.catalogFlushAll()
 end
 
 --- Records one stored catalog photo in the index of its target and model.
----@param key string The key, as <model>/<file>.
+---@param key string The key, as <model folder>/<file>.
 ---@param bytes number
 ---@param cdn table|nil { name, id, url } when the photo went to the CDN.
 function Studio.catalogIndexed(key, bytes, cdn)
-  local model <const>, file <const> = key:match('^([^/]+)/([^/]+)$')
+  local folder <const>, file <const> = key:match('^([^/]+)/([^/]+)$')
 
-  if not model or not Studio.catalogAccepts(model) then
+  if not folder or not Studio.catalogAccepts(folder) then
     return
   end
 
-  local target <const> = Studio.catalogTargetOf(file)
+  local name <const> = Studio.catalogTargetOf(file)
 
-  if not target then
+  if not name then
     return
   end
 
-  local catalog <const> = load(model, target)
+  local catalog <const> = load(folder, name)
 
   catalog.entries[file] = { bytes = bytes, at = os.time(), cdn = cdn }
   catalog.dirty = catalog.dirty + 1
