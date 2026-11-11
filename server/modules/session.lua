@@ -10,10 +10,16 @@ local BENCH_NAMES <const> = 'variations, readback, encode, upload, save, full, a
 local RESULTS_FOLDER <const> = 'bench'
 local CONSOLE_SOURCE <const> = 0
 local FOLDERS <const> = { 'bench', 'bench/upload', 'bench/full', 'bench/save', 'probe', 'catalog' }
+local MODEL_CHOICES <const> = {}
 
 for i = 1, #StudioConfig.catalog.models do
-  FOLDERS[#FOLDERS + 1] = 'catalog/' .. StudioConfig.catalog.folders[StudioConfig.catalog.models[i]]
+  local folder <const> = StudioConfig.catalog.folders[StudioConfig.catalog.models[i]]
+
+  FOLDERS[#FOLDERS + 1] = 'catalog/' .. folder
+  MODEL_CHOICES[#MODEL_CHOICES + 1] = folder
 end
+
+MODEL_CHOICES[#MODEL_CHOICES + 1] = 'all'
 
 local resource <const> = GetCurrentResourceName()
 local session = nil
@@ -328,9 +334,14 @@ Siku.command.register('studio', function(src, args)
 
   if action == 'capture' then
     local done <const>, count <const> = Studio.catalogDone()
+    local models = StudioConfig.catalog.models
+
+    if args.model and args.model ~= 'all' then
+      models = { Studio.modelOf(args.model) }
+    end
 
     start(src, 'capture', nil, {
-      models = StudioConfig.catalog.models,
+      models = models,
       target = (args.target or 'all'):lower(),
       from = args.from,
       to = args.to,
@@ -372,6 +383,7 @@ end, {
   arguments = {
     { name = 'action', type = 'string', choices = { 'capture', 'setup', 'bench', 'probe', 'status', 'stop' }, help = 'capture, setup, bench, probe, status ou stop' },
     { name = 'target', type = 'string', optional = true, help = 'capture : all, un jeu (multicharacter) ou une cible par son nom (hair, top, hat, beard…) ; bench : variations, readback, encode, upload, save, full, all' },
+    { name = 'model', type = 'string', optional = true, choices = MODEL_CHOICES, help = 'capture : male, female ou all (les deux)' },
     { name = 'from', type = 'integer', optional = true, min = 0, help = 'capture : premier index' },
     { name = 'to', type = 'integer', optional = true, min = 0, help = 'capture : dernier index' },
   },
