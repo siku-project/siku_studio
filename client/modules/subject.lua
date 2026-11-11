@@ -176,6 +176,53 @@ function Subject.create(model)
   return ped
 end
 
+--- Removes the subject and puts a fresh one of the same model in its
+--- place, when the one in the studio stopped answering.
+---@param model string The model folder name, from catalog.models.
+---@return number ped The new subject handle.
+function Subject.recreate(model)
+  Subject.destroy()
+
+  return Subject.create(model)
+end
+
+--- What the subject looks like right now, for the log of a photo that
+--- could not be taken: whether it still exists, still wears its model,
+--- what it wears where the photo was asked, and how many streaming
+--- requests the game still holds.
+---@param kind string|nil 'component' or 'prop', to read what is worn there.
+---@param index number|nil The component or prop slot.
+---@param asked table|nil { drawable, texture } that was asked.
+---@return table
+function Subject.diagnose(kind, index, asked)
+  local info <const> = {
+    model = modelName,
+    exists = ped ~= nil and DoesEntityExist(ped) or false,
+    streamingRequests = GetNumberOfStreamingRequests(),
+  }
+
+  if not info.exists then
+    return info
+  end
+
+  info.sameModel = GetEntityModel(ped) == GetHashKey(modelName)
+  info.visible = IsEntityVisible(ped)
+  info.distance = #(GetEntityCoords(ped) - StudioConfig.scene.origin)
+  info.preloadFinished = HasPedPreloadVariationDataFinished(ped)
+
+  if kind == 'component' and index then
+    info.worn = { GetPedDrawableVariation(ped, index), GetPedTextureVariation(ped, index) }
+
+    if asked then
+      info.valid = IsPedComponentVariationValid(ped, index, asked[1], asked[2])
+    end
+  elseif kind == 'prop' and index then
+    info.worn = { GetPedPropIndex(ped, index), GetPedPropTextureIndex(ped, index) }
+  end
+
+  return info
+end
+
 --- The clone handle, nil before create or after destroy.
 ---@return number|nil
 function Subject.ped()

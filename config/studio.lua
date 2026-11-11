@@ -207,9 +207,15 @@ StudioConfig = {
     changeTimeoutMs = 5000,
 
     --- Photos that may fail one after the other (item never loaded, page
-    --- not answering) before the target is given up (`studio.target_skipped`)
-    --- and the capture moves on to the next one.
+    --- not answering) before the subject is recreated (`studio.subject_recreated`);
+    --- the same count again and the target is given up (`studio.target_skipped`),
+    --- the capture moves on to the next one. Every skipped photo is retried
+    --- once at the end of its target.
     failuresInARow = 10,
+
+    --- Targets given up one after the other before the whole capture stops
+    --- with its summary, the game being stuck.
+    targetsInARow = 2,
 
     --- Everything photographed, in order. id: how the target is named in
     --- commands, sets and presets. name: the folder of its photos and the
