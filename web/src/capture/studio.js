@@ -1,11 +1,11 @@
+import { backgroundSeen, difference } from './frames.js'
+
 export function startCapture() {
   const PREFIX = 'siku_studio:nui:'
   const PLACEHOLDER = [0, 0, 255, 255]
-  const CHANGE_RETRIES = 12
-  const CHANGE_STRIDE = 64 * 4
-  const CHANGE_THRESHOLD = 12
+  const BACKGROUND_RETRIES = 90
   const STABLE_RETRIES = 30
-  const STABLE_PIXEL = 6
+  const STABLE_READS = 2
   const STABLE_SHARE = 0.002
   const CONCURRENT_UPLOADS = 20
   const RANDOM_CHUNK = 65536
@@ -75,37 +75,33 @@ export function startCapture() {
     return new Promise((resolve) => requestAnimationFrame(() => resolve()))
   }
 
-  function difference(before, after) {
-    let total = 0
-    let moved = 0
-    let n = 0
+  async function onBackground(expected) {
+    const size = config.size
+    let pixels = readSync(size, size, cropRegion())
+    let frames = 0
 
-    for (let p = 0; p < before.length; p += CHANGE_STRIDE) {
-      const d =
-        Math.abs(after[p] - before[p]) +
-        Math.abs(after[p + 1] - before[p + 1]) +
-        Math.abs(after[p + 2] - before[p + 2])
-
-      total += d
-
-      if (d > STABLE_PIXEL) {
-        moved += 1
-      }
-
-      n += 1
+    if (!Array.isArray(expected)) {
+      return { pixels, frames }
     }
 
-    return { mean: total / n, moved: moved / n }
-  }
+    while (!backgroundSeen(pixels, size, size, expected)) {
+      if (frames >= BACKGROUND_RETRIES) {
+        throw new Error(`background ${expected.join('/')} never shown`)
+      }
 
-  function changed(before, after) {
-    return difference(before, after).mean >= CHANGE_THRESHOLD
+      frames += 1
+      await nextFrame()
+      pixels = readSync(size, size, cropRegion())
+    }
+
+    return { pixels, frames }
   }
 
   async function settled(pixels) {
     const size = config.size
     let current = pixels
     let frames = 0
+    let still = 0
 
     while (frames < STABLE_RETRIES) {
       await nextFrame()
@@ -113,15 +109,22 @@ export function startCapture() {
       const next = readSync(size, size, cropRegion())
 
       frames += 1
-
-      if (difference(current, next).moved <= STABLE_SHARE) {
-        return { pixels: next, frames }
-      }
-
+      still = difference(current, next).moved <= STABLE_SHARE ? still + 1 : 0
       current = next
+
+      if (still >= STABLE_READS) {
+        break
+      }
     }
 
     return { pixels: current, frames }
+  }
+
+  async function reading(expected) {
+    const shown = await onBackground(expected)
+    const stable = await settled(shown.pixels)
+
+    return { pixels: stable.pixels, waited: shown.frames, settled: stable.frames }
   }
 
   function nextTick() {
@@ -702,17 +705,22 @@ export function startCapture() {
       return {}
     },
 
-    async snap() {
-      const size = config.size
+    async snap(message) {
       const started = performance.now()
-      const stable = await settled(readSync(size, size, cropRegion()))
+      const read = await reading(message.background)
       const id = nextSnap
 
       nextSnap += 1
-      snaps.set(id, stable.pixels)
-      pipeline.settled += stable.frames
+      snaps.set(id, read.pixels)
+      pipeline.retries += read.waited
+      pipeline.settled += read.settled
 
-      return { snap: id, readMs: performance.now() - started, settled: stable.frames }
+      return {
+        snap: id,
+        readMs: performance.now() - started,
+        retries: read.waited,
+        settled: read.settled,
+      }
     },
 
     async probe(message) {
@@ -729,19 +737,10 @@ export function startCapture() {
         }
       }
 
-      let pixels = readSync(size, size, cropRegion())
-      let retries = 0
-
-      while (first && retries < CHANGE_RETRIES && !changed(first, pixels)) {
-        retries += 1
-        await nextFrame()
-        pixels = readSync(size, size, cropRegion())
-      }
-
-      const stable = await settled(pixels)
-
-      pixels = stable.pixels
-
+      const read = await reading(message.background)
+      const pixels = read.pixels
+      const retries = read.waited
+      const stable = { frames: read.settled }
       const readMs = performance.now() - readStarted
       const placeholder = isPlaceholder(pixels)
       const key = `${message.key}.webp`
@@ -997,20 +996,11 @@ export function startCapture() {
         }
       }
 
-      let pixels = readSync(size, size, cropRegion())
-      let retries = 0
+      const read = await reading(message.background)
+      const pixels = read.pixels
 
-      while (first && retries < CHANGE_RETRIES && !changed(first, pixels)) {
-        retries += 1
-        await nextFrame()
-        pixels = readSync(size, size, cropRegion())
-      }
-
-      const stable = await settled(pixels)
-
-      pixels = stable.pixels
-      pipeline.retries += retries
-      pipeline.settled += stable.frames
+      pipeline.retries += read.waited
+      pipeline.settled += read.settled
 
       const readMs = performance.now() - started
 
@@ -1025,7 +1015,7 @@ export function startCapture() {
 
       await drained()
 
-      return { readMs, retries, settled: stable.frames, pending: pipeline.pending }
+      return { readMs, retries: read.waited, settled: read.settled, pending: pipeline.pending }
     },
 
     async flush() {
