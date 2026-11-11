@@ -219,11 +219,13 @@ local function photo(state, key)
   end
 end
 
-local function shoot(state, key, prepare)
+local function shoot(state, key, prepare, retry)
   if state.done[key] then
     state.skipped = state.skipped + 1
-    return
+    return true
   end
+
+  Session.checkpoint()
 
   local ok <const>, err <const> = pcall(function()
     if not prepare() then
@@ -235,7 +237,13 @@ local function shoot(state, key, prepare)
 
   if ok then
     state.streak = 0
-    return
+
+    if retry then
+      state.missed = state.missed - 1
+      state.retaken = state.retaken + 1
+    end
+
+    return true
   end
 
   if err == 'stopped' then
@@ -244,108 +252,150 @@ local function shoot(state, key, prepare)
 
   local reason <const> = tostring(err)
 
-  state.missed = state.missed + 1
-  state.streak = state.streak + 1
+  if not retry then
+    state.missed = state.missed + 1
+    state.streak = state.streak + 1
+  end
 
-  Siku.log.warn('studio.photo_skipped', ('Photo %s skipped: %s'):format(key, reason), {
+  Session.alive()
+
+  Siku.log.warn('studio.photo_skipped', ('Photo %s %s: %s'):format(key, retry and 'skipped again' or 'skipped', reason), {
     key = key,
     model = state.model,
     target = state.target,
     reason = reason,
+    retry = retry or nil,
     streak = state.streak,
     missed = state.missed,
+    subject = Subject.diagnose(state.kind, state.index, state.asked),
+    cameraRendering = Scene.camera() ~= nil and Siku.camera.isRendering(Scene.camera()),
   })
 
-  if state.streak >= StudioConfig.catalog.failuresInARow then
-    error(('%d photos failed in a row, the last one %s: %s'):format(state.streak, key, reason), 0)
+  if retry or state.streak < StudioConfig.catalog.failuresInARow then
+    return false
+  end
+
+  if not state.recovered then
+    state.recovered = true
+    state.streak = 0
+    state.recover(key, reason)
+
+    return false
+  end
+
+  error(('%d photos failed in a row, the last one %s: %s'):format(state.streak, key, reason), 0)
+end
+
+local function runItems(state, items)
+  local missed <const> = {}
+
+  for i = 1, #items do
+    if not shoot(state, items[i].key, items[i].prepare) then
+      missed[#missed + 1] = items[i]
+    end
+  end
+
+  for i = 1, #missed do
+    shoot(state, missed[i].key, missed[i].prepare, true)
   end
 end
 
-local function runComponent(state, target, from, to)
+local function componentItems(state, target, from, to)
   local timeout <const> = StudioConfig.catalog.changeTimeoutMs
+  local items <const> = {}
 
   for drawable = from, to do
     local textures <const> = textureLimit(Subject.textures(target.index, drawable))
 
     for texture = 0, textures - 1 do
-      local key <const> = ('%s/%s_%d_%d.webp'):format(state.folder, target.name, drawable, texture)
+      items[#items + 1] = {
+        key = ('%s/%s_%d_%d.webp'):format(state.folder, target.name, drawable, texture),
+        prepare = function()
+          state.asked = { drawable, texture }
+          Subject.setVariation(target.index, drawable, texture)
+          Subject.preload(target.index, drawable, texture)
 
-      shoot(state, key, function()
-        Subject.setVariation(target.index, drawable, texture)
-        Subject.preload(target.index, drawable, texture)
+          local shown <const> = waitFinished(Subject.preloadFinished, timeout)
 
-        local shown <const> = waitFinished(Subject.preloadFinished, timeout)
+          Subject.releasePreload()
 
-        Subject.releasePreload()
-
-        return shown
-      end)
+          return shown
+        end,
+      }
     end
   end
+
+  return items
 end
 
-local function runProp(state, target, from, to)
+local function propItems(state, target, from, to)
   local timeout <const> = StudioConfig.catalog.changeTimeoutMs
+  local items <const> = {}
 
   for drawable = from, to do
     local textures <const> = textureLimit(Subject.propTextures(target.index, drawable))
 
     for texture = 0, textures - 1 do
-      local key <const> = ('%s/%s_%d_%d.webp'):format(state.folder, target.name, drawable, texture)
+      items[#items + 1] = {
+        key = ('%s/%s_%d_%d.webp'):format(state.folder, target.name, drawable, texture),
+        prepare = function()
+          state.asked = { drawable, texture }
+          Subject.setProp(target.index, drawable, texture)
+          Subject.preloadProp(target.index, drawable, texture)
 
-      shoot(state, key, function()
-        Subject.setProp(target.index, drawable, texture)
-        Subject.preloadProp(target.index, drawable, texture)
+          local shown <const> = waitFinished(Subject.preloadPropFinished, timeout)
 
-        local shown <const> = waitFinished(Subject.preloadPropFinished, timeout)
+          Subject.releasePreloadProp()
 
-        Subject.releasePreloadProp()
-
-        return shown
-      end)
+          return shown
+        end,
+      }
     end
   end
 
+  return items
+end
+
+local function valueItems(state, target, from, to, apply)
+  local items <const> = {}
+
+  for value = from, to do
+    items[#items + 1] = {
+      key = ('%s/%s_%d.webp'):format(state.folder, target.name, value),
+      prepare = function()
+        state.asked = { value }
+        apply(value)
+        settle(OVERLAY_SETTLE_FRAMES)
+
+        return true
+      end,
+    }
+  end
+
+  return items
+end
+
+local function runComponent(state, target, from, to)
+  runItems(state, componentItems(state, target, from, to))
+end
+
+local function runProp(state, target, from, to)
+  runItems(state, propItems(state, target, from, to))
   Subject.clearProp(target.index)
 end
 
 local function runOverlay(state, target, from, to)
-  for value = from, to do
-    local key <const> = ('%s/%s_%d.webp'):format(state.folder, target.name, value)
-
-    shoot(state, key, function()
-      Subject.setOverlay(target.index, value, target.color, StudioConfig.catalog.overlayColor)
-      settle(OVERLAY_SETTLE_FRAMES)
-
-      return true
-    end)
-  end
+  runItems(state, valueItems(state, target, from, to, function(value)
+    Subject.setOverlay(target.index, value, target.color, StudioConfig.catalog.overlayColor)
+  end))
 end
 
 local function runHairColor(state, target, from, to)
-  for color = from, to do
-    local key <const> = ('%s/%s_%d.webp'):format(state.folder, target.name, color)
-
-    shoot(state, key, function()
-      Subject.setHairColor(color)
-      settle(OVERLAY_SETTLE_FRAMES)
-
-      return true
-    end)
-  end
+  runItems(state, valueItems(state, target, from, to, Subject.setHairColor))
 end
 
 local function runEyeColor(state, target, from, to)
-  for color = from, to do
-    local key <const> = ('%s/%s_%d.webp'):format(state.folder, target.name, color)
-
-    shoot(state, key, function()
-      Subject.setEyeColor(color)
-      settle(OVERLAY_SETTLE_FRAMES)
-
-      return true
-    end)
-  end
+  runItems(state, valueItems(state, target, from, to, Subject.setEyeColor))
 end
 
 local RUNNERS <const> = {
@@ -356,6 +406,33 @@ local RUNNERS <const> = {
   eyecolor = runEyeColor,
 }
 
+local function dress(target, model)
+  if target.bare then
+    local bare <const> = StudioConfig.catalog.bare[model]
+
+    if bare then
+      local components <const> = {}
+
+      for component in pairs(bare) do
+        components[#components + 1] = component
+      end
+
+      Subject.strip(bare)
+      dressed(components, bare)
+    end
+  end
+
+  if target.hide then
+    local hidden <const> = StudioConfig.catalog.hidden[model] or {}
+
+    Subject.hide(target.hide, hidden)
+    dressed(target.hide.components or {}, hidden)
+  end
+
+  Scene.frame(Subject.ped(), target.preset, model)
+  settle()
+end
+
 local function runModel(job, model, targets, state)
   local ped <const> = Subject.create(model)
 
@@ -364,6 +441,7 @@ local function runModel(job, model, targets, state)
 
   local list <const>, planned <const> = inventory(job, targets)
   local before <const> = state.photos
+  local givenUp = 0
 
   Siku.log.info('studio.inventory', ('%s: %d targets, %d photos planned'):format(model, #list, planned), {
     model = model,
@@ -380,6 +458,24 @@ local function runModel(job, model, targets, state)
     Session.checkpoint()
 
     state.target = target.id
+    state.kind = target.kind
+    state.index = target.index
+    state.asked = nil
+    state.recovered = false
+    state.recover = function(key, reason)
+      local was <const> = Subject.diagnose(target.kind, target.index, state.asked)
+
+      Siku.log.warn('studio.subject_recreated', ('Subject %s recreated after %d photos failed in a row, the last one %s: %s'):format(model, StudioConfig.catalog.failuresInARow, key, reason), {
+        model = model,
+        target = target.id,
+        key = key,
+        reason = reason,
+        subject = was,
+      })
+
+      Subject.recreate(model)
+      dress(target, model)
+    end
 
     if entry.count > 0 then
       Siku.log.debug('studio.debug', ('Capture target %s (%s) on %s: %d items from %d to %d, %d photos'):format(target.id, target.label, model, entry.count, entry.from, entry.to, entry.photos), {
@@ -388,45 +484,31 @@ local function runModel(job, model, targets, state)
         target = entry,
       })
 
-      if target.bare then
-        local bare <const> = StudioConfig.catalog.bare[model]
-
-        if bare then
-          local components <const> = {}
-
-          for component in pairs(bare) do
-            components[#components + 1] = component
-          end
-
-          Subject.strip(bare)
-          dressed(components, bare)
-        end
-      end
-
-      if target.hide then
-        local hidden <const> = StudioConfig.catalog.hidden[model] or {}
-
-        Subject.hide(target.hide, hidden)
-        dressed(target.hide.components or {}, hidden)
-      end
-
-      Scene.frame(Subject.ped(), target.preset, model)
-      settle()
+      dress(target, model)
 
       local ok <const>, err <const> = pcall(RUNNERS[target.kind], state, target, entry.from, entry.to)
 
-      if not ok then
+      if ok then
+        givenUp = 0
+      else
         if err == 'stopped' then
           error(err, 0)
         end
+
+        givenUp = givenUp + 1
+        state.streak = 0
 
         Siku.log.warn('studio.target_skipped', ('Target %s on %s given up: %s'):format(target.id, model, tostring(err)), {
           model = model,
           target = target.id,
           reason = tostring(err),
           missed = state.missed,
+          givenUp = givenUp,
         })
-        state.streak = 0
+
+        if givenUp >= StudioConfig.catalog.targetsInARow then
+          error(('%d targets given up in a row on %s, the last one %s: %s'):format(givenUp, model, target.id, tostring(err)), 0)
+        end
       end
 
       Subject.restore()
@@ -452,6 +534,7 @@ function Catalog.run(job)
     photos = 0,
     skipped = 0,
     missed = 0,
+    retaken = 0,
     streak = 0,
     readMs = 0,
     target = nil,
@@ -460,13 +543,19 @@ function Catalog.run(job)
   local runs <const> = {}
   local planned = 0
 
-  for i = 1, #models do
-    Session.checkpoint()
+  local finished <const>, failure <const> = pcall(function()
+    for i = 1, #models do
+      Session.checkpoint()
 
-    state.model = models[i]
-    state.folder = StudioConfig.catalog.folders[models[i]] or models[i]
-    runs[i] = runModel(job, models[i], targets, state)
-    planned = planned + runs[i].planned
+      state.model = models[i]
+      state.folder = StudioConfig.catalog.folders[models[i]] or models[i]
+      runs[i] = runModel(job, models[i], targets, state)
+      planned = planned + runs[i].planned
+    end
+  end)
+
+  if not finished and failure == 'stopped' then
+    error(failure, 0)
   end
 
   local captureMs <const> = GetGameTimer() - state.startedAt
@@ -491,6 +580,8 @@ function Catalog.run(job)
     photos = state.photos,
     skipped = state.skipped,
     missed = state.missed,
+    retaken = state.retaken,
+    error = (not finished) and tostring(failure) or nil,
     uploaded = stats.uploaded or 0,
     failed = stats.failed or 0,
     errors = stats.errors,
@@ -509,11 +600,16 @@ function Catalog.run(job)
     backgrounds = stats.backgrounds,
   }
 
-  result.summary = ('%d photos taken (%s), %d skipped, %d never shown, %d uploaded, %d failed, %.1f photos/s, %d s'):format(
-    state.photos, table.concat(parts, ', '), state.skipped, state.missed, result.uploaded, result.failed, result.photosPerSecond, math.floor(totalMs / 1000)
+  result.summary = ('%d photos taken (%s), %d skipped, %d never shown, %d retaken, %d uploaded, %d failed, %.1f photos/s, %d s%s'):format(
+    state.photos, table.concat(parts, ', '), state.skipped, state.missed, state.retaken, result.uploaded, result.failed, result.photosPerSecond, math.floor(totalMs / 1000),
+    finished and '' or (', stopped early: ' .. tostring(failure))
   )
 
   Session.report('capture', result)
+
+  if not finished then
+    error(tostring(failure), 0)
+  end
 
   return result.summary
 end
