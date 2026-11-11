@@ -12,7 +12,7 @@ local CONSOLE_SOURCE <const> = 0
 local FOLDERS <const> = { 'bench', 'bench/upload', 'bench/full', 'bench/save', 'probe', 'catalog' }
 
 for i = 1, #StudioConfig.catalog.models do
-  FOLDERS[#FOLDERS + 1] = 'catalog/' .. StudioConfig.catalog.models[i]
+  FOLDERS[#FOLDERS + 1] = 'catalog/' .. StudioConfig.catalog.folders[StudioConfig.catalog.models[i]]
 end
 
 local resource <const> = GetCurrentResourceName()

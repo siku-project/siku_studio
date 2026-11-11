@@ -112,9 +112,9 @@ function Studio.remove(path)
   return os.remove(('%s/%s'):format(GetResourcePath(resource), path)) == true
 end
 
---- The CDN folder of a photo: catalog photos go to <target>/<model>, named
---- after their key so each one is recognised by name; anything else goes
---- to a folder named after its kind.
+--- The CDN folder of a photo: catalog photos go to <target name>/<model
+--- folder> (`hair/male`), named after their key so each one is recognised
+--- by name; anything else goes to a folder named after its kind.
 ---@param kind string
 ---@param key string
 ---@return string folder

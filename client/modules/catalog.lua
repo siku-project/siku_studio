@@ -247,7 +247,7 @@ local function runComponent(state, target, from, to)
     local textures <const> = textureLimit(Subject.textures(target.index, drawable))
 
     for texture = 0, textures - 1 do
-      local key <const> = ('%s/component_%d_%d_%d.webp'):format(state.model, target.index, drawable, texture)
+      local key <const> = ('%s/%s_%d_%d.webp'):format(state.folder, target.name, drawable, texture)
 
       shoot(state, key, function()
         Subject.setVariation(target.index, drawable, texture)
@@ -270,7 +270,7 @@ local function runProp(state, target, from, to)
     local textures <const> = textureLimit(Subject.propTextures(target.index, drawable))
 
     for texture = 0, textures - 1 do
-      local key <const> = ('%s/prop_%d_%d_%d.webp'):format(state.model, target.index, drawable, texture)
+      local key <const> = ('%s/%s_%d_%d.webp'):format(state.folder, target.name, drawable, texture)
 
       shoot(state, key, function()
         Subject.setProp(target.index, drawable, texture)
@@ -290,7 +290,7 @@ end
 
 local function runOverlay(state, target, from, to)
   for value = from, to do
-    local key <const> = ('%s/overlay_%d_%d.webp'):format(state.model, target.index, value)
+    local key <const> = ('%s/%s_%d.webp'):format(state.folder, target.name, value)
 
     shoot(state, key, function()
       Subject.setOverlay(target.index, value, target.color, StudioConfig.catalog.overlayColor)
@@ -303,7 +303,7 @@ end
 
 local function runHairColor(state, target, from, to)
   for color = from, to do
-    local key <const> = ('%s/haircolor_%d.webp'):format(state.model, color)
+    local key <const> = ('%s/%s_%d.webp'):format(state.folder, target.name, color)
 
     shoot(state, key, function()
       Subject.setHairColor(color)
@@ -316,7 +316,7 @@ end
 
 local function runEyeColor(state, target, from, to)
   for color = from, to do
-    local key <const> = ('%s/eyecolor_%d.webp'):format(state.model, color)
+    local key <const> = ('%s/%s_%d.webp'):format(state.folder, target.name, color)
 
     shoot(state, key, function()
       Subject.setEyeColor(color)
@@ -402,6 +402,7 @@ function Catalog.run(job)
   local models <const> = job.models or StudioConfig.catalog.models
   local state <const> = {
     model = nil,
+    folder = nil,
     done = job.done or {},
     photos = 0,
     skipped = 0,
@@ -418,6 +419,7 @@ function Catalog.run(job)
     Session.checkpoint()
 
     state.model = models[i]
+    state.folder = StudioConfig.catalog.folders[models[i]] or models[i]
     runs[i] = runModel(job, models[i], targets, state)
     planned = planned + runs[i].planned
   end
