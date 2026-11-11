@@ -75,7 +75,7 @@ export function startCapture() {
     return new Promise((resolve) => requestAnimationFrame(() => resolve()))
   }
 
-  async function onBackground(expected) {
+  async function onBackground(expected, other) {
     const size = config.size
     let pixels = readSync(size, size, cropRegion())
     let frames = 0
@@ -84,9 +84,11 @@ export function startCapture() {
       return { pixels, frames }
     }
 
-    while (!backgroundSeen(pixels, size, size, expected)) {
+    while (!backgroundSeen(pixels, expected, other)) {
       if (frames >= BACKGROUND_RETRIES) {
-        throw new Error(`background ${expected.join('/')} never shown`)
+        throw new Error(
+          `background ${expected.join('/')} never shown, ${Array.isArray(other) ? other.join('/') : 'nothing'} still there`,
+        )
       }
 
       frames += 1
@@ -120,8 +122,8 @@ export function startCapture() {
     return { pixels: current, frames }
   }
 
-  async function reading(expected) {
-    const shown = await onBackground(expected)
+  async function reading(expected, other) {
+    const shown = await onBackground(expected, other)
     const stable = await settled(shown.pixels)
 
     return { pixels: stable.pixels, waited: shown.frames, settled: stable.frames }
@@ -707,7 +709,7 @@ export function startCapture() {
 
     async snap(message) {
       const started = performance.now()
-      const read = await reading(message.background)
+      const read = await reading(message.background, message.previous)
       const id = nextSnap
 
       nextSnap += 1
@@ -737,7 +739,7 @@ export function startCapture() {
         }
       }
 
-      const read = await reading(message.background)
+      const read = await reading(message.background, message.previous)
       const pixels = read.pixels
       const retries = read.waited
       const stable = { frames: read.settled }
@@ -996,7 +998,7 @@ export function startCapture() {
         }
       }
 
-      const read = await reading(message.background)
+      const read = await reading(message.background, message.previous)
       const pixels = read.pixels
 
       pipeline.retries += read.waited

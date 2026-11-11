@@ -176,7 +176,10 @@ local function photo(state, key)
     Scene.setBackground('green')
     settle()
 
-    local snapped <const> = Nui.request('snap', { background = StudioConfig.scene.backgrounds.green }, SNAP_TIMEOUT_MS)
+    local snapped <const> = Nui.request('snap', {
+      background = StudioConfig.scene.backgrounds.green,
+      previous = StudioConfig.scene.backgrounds.magenta,
+    }, SNAP_TIMEOUT_MS)
 
     if not snapped.ok then
       error(('snap failed for %s: %s'):format(key, tostring(snapped.error)), 0)
@@ -195,6 +198,7 @@ local function photo(state, key)
     key = key,
     first = first,
     background = first and StudioConfig.scene.backgrounds.magenta or nil,
+    previous = first and StudioConfig.scene.backgrounds.green or nil,
   }, CAPTURE_TIMEOUT_MS)
 
   if not reply.ok then
@@ -409,7 +413,21 @@ local function runModel(job, model, targets, state)
       Scene.frame(Subject.ped(), target.preset, model)
       settle()
 
-      RUNNERS[target.kind](state, target, entry.from, entry.to)
+      local ok <const>, err <const> = pcall(RUNNERS[target.kind], state, target, entry.from, entry.to)
+
+      if not ok then
+        if err == 'stopped' then
+          error(err, 0)
+        end
+
+        Siku.log.warn('studio.target_skipped', ('Target %s on %s given up: %s'):format(target.id, model, tostring(err)), {
+          model = model,
+          target = target.id,
+          reason = tostring(err),
+          missed = state.missed,
+        })
+        state.streak = 0
+      end
 
       Subject.restore()
       settle()
