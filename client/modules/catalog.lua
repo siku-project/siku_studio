@@ -5,6 +5,8 @@ local CAPTURE_TIMEOUT_MS <const> = 120000
 local FLUSH_TIMEOUT_MS <const> = 600000
 local PROGRESS_EVERY <const> = 100
 local OVERLAY_SETTLE_FRAMES <const> = 2
+local DRAIN_POLL_MS <const> = 250
+local DRAIN_ALIVE_EVERY_MS <const> = 30000
 
 local function settle(extra)
   for _ = 1, StudioConfig.capture.settleFrames + (extra or 0) do
@@ -26,14 +28,32 @@ local function waitFinished(check, timeoutMs)
   return true
 end
 
-local function dressed(components, drawables)
-  if #components == 0 then
-    return
+local function loaded()
+  return waitFinished(Subject.loaded, StudioConfig.catalog.changeTimeoutMs)
+end
+
+local function drain()
+  local started <const> = GetGameTimer()
+  local timeout <const> = StudioConfig.catalog.drainTimeoutMs
+  local pinged = started
+
+  while not Subject.loaded() do
+    local now <const> = GetGameTimer()
+
+    if now - started > timeout then
+      return false, now - started
+    end
+
+    if now - pinged >= DRAIN_ALIVE_EVERY_MS then
+      pinged = now
+      Session.alive()
+    end
+
+    Session.checkpoint()
+    Wait(DRAIN_POLL_MS)
   end
 
-  Subject.preloadComponents(components, drawables)
-  waitFinished(Subject.preloadFinished, StudioConfig.catalog.changeTimeoutMs)
-  Subject.releasePreload()
+  return true, GetGameTimer() - started
 end
 
 local function textureLimit(available)
@@ -259,6 +279,9 @@ local function shoot(state, key, prepare, retry)
 
   Session.alive()
 
+  local pending <const> = GetNumberOfStreamingRequests()
+  local drained <const>, waitedMs <const> = drain()
+
   Siku.log.warn('studio.photo_skipped', ('Photo %s %s: %s'):format(key, retry and 'skipped again' or 'skipped', reason), {
     key = key,
     model = state.model,
@@ -267,9 +290,45 @@ local function shoot(state, key, prepare, retry)
     retry = retry or nil,
     streak = state.streak,
     missed = state.missed,
+    pending = pending,
+    drained = drained,
+    waitedMs = waitedMs,
     subject = Subject.diagnose(state.kind, state.index, state.asked),
     cameraRendering = Scene.camera() ~= nil and Siku.camera.isRendering(Scene.camera()),
   })
+
+  if not drained then
+    local again <const> = state.recovered
+    local totalMs = waitedMs
+
+    Siku.log.warn('studio.streaming_stalled', ('Streaming stalled on %s after %s: %d requests pending, %d still after %d s%s'):format(state.model, key, pending, GetNumberOfStreamingRequests(), math.floor(waitedMs / 1000), again and ', subject already recreated' or ''), {
+      model = state.model,
+      target = state.target,
+      key = key,
+      pending = pending,
+      pendingAfter = GetNumberOfStreamingRequests(),
+      waitedMs = waitedMs,
+      recreated = again,
+    })
+
+    if not again then
+      state.recovered = true
+      state.streak = 0
+      state.recover(key, reason)
+
+      local recovered <const>, moreMs <const> = drain()
+
+      totalMs = totalMs + moreMs
+
+      if recovered then
+        return false
+      end
+    end
+
+    state.saturated = T('error_streaming_saturated'):format(GetNumberOfStreamingRequests(), math.floor(totalMs / 1000))
+
+    error(state.saturated, 0)
+  end
 
   if retry or state.streak < StudioConfig.catalog.failuresInARow then
     return false
@@ -313,13 +372,8 @@ local function componentItems(state, target, from, to)
         prepare = function()
           state.asked = { drawable, texture }
           Subject.setVariation(target.index, drawable, texture)
-          Subject.preload(target.index, drawable, texture)
 
-          local shown <const> = waitFinished(Subject.preloadFinished, timeout)
-
-          Subject.releasePreload()
-
-          return shown
+          return waitFinished(Subject.loaded, timeout)
         end,
       }
     end
@@ -341,13 +395,8 @@ local function propItems(state, target, from, to)
         prepare = function()
           state.asked = { drawable, texture }
           Subject.setProp(target.index, drawable, texture)
-          Subject.preloadProp(target.index, drawable, texture)
 
-          local shown <const> = waitFinished(Subject.preloadPropFinished, timeout)
-
-          Subject.releasePreloadProp()
-
-          return shown
+          return waitFinished(Subject.loaded, timeout)
         end,
       }
     end
@@ -411,22 +460,14 @@ local function dress(target, model)
     local bare <const> = StudioConfig.catalog.bare[model]
 
     if bare then
-      local components <const> = {}
-
-      for component in pairs(bare) do
-        components[#components + 1] = component
-      end
-
       Subject.strip(bare)
-      dressed(components, bare)
+      loaded()
     end
   end
 
   if target.hide then
-    local hidden <const> = StudioConfig.catalog.hidden[model] or {}
-
-    Subject.hide(target.hide, hidden)
-    dressed(target.hide.components or {}, hidden)
+    Subject.hide(target.hide, StudioConfig.catalog.hidden[model] or {})
+    loaded()
   end
 
   Scene.frame(Subject.ped(), target.preset, model)
@@ -491,7 +532,7 @@ local function runModel(job, model, targets, state)
       if ok then
         givenUp = 0
       else
-        if err == 'stopped' then
+        if err == 'stopped' or state.saturated then
           error(err, 0)
         end
 
@@ -536,6 +577,7 @@ function Catalog.run(job)
     missed = 0,
     retaken = 0,
     streak = 0,
+    saturated = nil,
     readMs = 0,
     target = nil,
     startedAt = GetGameTimer(),
