@@ -3,7 +3,7 @@ game 'gta5'
 
 author 'Siku Studio'
 description 'In-game capture studio for FiveM. Create screenshots, GIFs and video clips of clothing, animations, vehicles and props using customizable backdrops, camera controls and automated capture workflows.'
-version '0.8.1'
+version '0.8.2'
 
 name 'siku_studio'
 

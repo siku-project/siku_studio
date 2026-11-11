@@ -362,6 +362,19 @@ function Subject.preload(component, drawable, texture)
   SetPedPreloadVariationData(ped, component, drawable, texture or DEFAULT_TEXTURE)
 end
 
+--- Asks the game to stream the drawables the subject was just given by
+--- hide or strip, so the bare parts show before the next photo: the
+--- preload data takes one drawable per component.
+---@param components number[] The components changed.
+---@param drawables table { [component] = drawable }
+function Subject.preloadComponents(components, drawables)
+  for i = 1, #components do
+    local component <const> = components[i]
+
+    SetPedPreloadVariationData(ped, component, drawables[component] or 0, DEFAULT_TEXTURE)
+  end
+end
+
 --- Whether the component variation asked by preload is in memory.
 ---@return boolean
 function Subject.preloadFinished()

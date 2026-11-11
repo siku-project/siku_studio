@@ -26,6 +26,16 @@ local function waitFinished(check, timeoutMs)
   return true
 end
 
+local function dressed(components, drawables)
+  if #components == 0 then
+    return
+  end
+
+  Subject.preloadComponents(components, drawables)
+  waitFinished(Subject.preloadFinished, StudioConfig.catalog.changeTimeoutMs)
+  Subject.releasePreload()
+end
+
 local function textureLimit(available)
   local wanted <const> = StudioConfig.catalog.textures
 
@@ -166,7 +176,7 @@ local function photo(state, key)
     Scene.setBackground('green')
     settle()
 
-    local snapped <const> = Nui.request('snap', {}, SNAP_TIMEOUT_MS)
+    local snapped <const> = Nui.request('snap', { background = StudioConfig.scene.backgrounds.green }, SNAP_TIMEOUT_MS)
 
     if not snapped.ok then
       error(('snap failed for %s: %s'):format(key, tostring(snapped.error)), 0)
@@ -184,6 +194,7 @@ local function photo(state, key)
     kind = 'catalog',
     key = key,
     first = first,
+    background = first and StudioConfig.scene.backgrounds.magenta or nil,
   }, CAPTURE_TIMEOUT_MS)
 
   if not reply.ok then
@@ -377,12 +388,22 @@ local function runModel(job, model, targets, state)
         local bare <const> = StudioConfig.catalog.bare[model]
 
         if bare then
+          local components <const> = {}
+
+          for component in pairs(bare) do
+            components[#components + 1] = component
+          end
+
           Subject.strip(bare)
+          dressed(components, bare)
         end
       end
 
       if target.hide then
-        Subject.hide(target.hide, StudioConfig.catalog.hidden[model] or {})
+        local hidden <const> = StudioConfig.catalog.hidden[model] or {}
+
+        Subject.hide(target.hide, hidden)
+        dressed(target.hide.components or {}, hidden)
       end
 
       Scene.frame(Subject.ped(), target.preset, model)
