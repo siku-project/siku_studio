@@ -276,9 +276,11 @@ StudioConfig = {
     lossless = false,
 
     --- Frames rendered after a change of subject or of background before
-    --- the page starts reading the screen. The page then keeps reading
-    --- until two consecutive frames match, up to thirty frames, so the
-    --- exposure and the reflections have caught up with the change.
+    --- the page starts reading the screen. The page then waits until the
+    --- border of the picture shows the background asked (up to ninety
+    --- frames, the photo is skipped past that) and until three consecutive
+    --- frames match (up to thirty), so the game has shown the outfit and
+    --- the background and the exposure has caught up.
     settleFrames = 2,
 
     --- How the subject is cut from the background. 'double' photographs
