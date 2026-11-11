@@ -13,6 +13,7 @@ return {
   error_scene_never_focused = 'The scene never finished loading.',
   error_subject_never_cloned = 'The character clone was never created.',
   error_change_never_shown = 'The outfit change never showed on screen.',
+  error_streaming_saturated = 'The game streaming stopped answering: %d requests pending after %d s. Reconnect before running the capture again.',
   error_nui_never_answered = 'The capture interface did not answer (%s).',
   studio_setup_saved = 'Framing %s generated: lines in the F8 console and in the logs.',
   web = {

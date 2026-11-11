@@ -188,8 +188,8 @@ end
 
 --- What the subject looks like right now, for the log of a photo that
 --- could not be taken: whether it still exists, still wears its model,
---- what it wears where the photo was asked, and how many streaming
---- requests the game still holds.
+--- what it wears where the photo was asked, whether its look is loaded,
+--- and how many streaming requests the game still holds.
 ---@param kind string|nil 'component' or 'prop', to read what is worn there.
 ---@param index number|nil The component or prop slot.
 ---@param asked table|nil { drawable, texture } that was asked.
@@ -208,7 +208,7 @@ function Subject.diagnose(kind, index, asked)
   info.sameModel = GetEntityModel(ped) == GetHashKey(modelName)
   info.visible = IsEntityVisible(ped)
   info.distance = #(GetEntityCoords(ped) - StudioConfig.scene.origin)
-  info.preloadFinished = HasPedPreloadVariationDataFinished(ped)
+  info.loaded = HaveAllStreamingRequestsCompleted(ped)
 
   if kind == 'component' and index then
     info.worn = { GetPedDrawableVariation(ped, index), GetPedTextureVariation(ped, index) }
@@ -420,6 +420,13 @@ function Subject.preloadComponents(components, drawables)
 
     SetPedPreloadVariationData(ped, component, drawables[component] or 0, DEFAULT_TEXTURE)
   end
+end
+
+--- Whether everything the subject's current look needs is in memory: the
+--- game's own signal that a variation or prop change has been applied.
+---@return boolean
+function Subject.loaded()
+  return HaveAllStreamingRequestsCompleted(ped)
 end
 
 --- Whether the component variation asked by preload is in memory.

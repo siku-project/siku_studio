@@ -13,6 +13,7 @@ return {
   error_scene_never_focused = "La scène n'a jamais fini de charger.",
   error_subject_never_cloned = "Le clone du personnage n'a jamais été créé.",
   error_change_never_shown = "Le changement de tenue n'est jamais apparu à l'écran.",
+  error_streaming_saturated = "Le streaming du jeu ne répond plus : %d requêtes en attente après %d s. Reconnecte-toi avant de relancer la capture.",
   error_nui_never_answered = "L'interface de capture n'a pas répondu (%s).",
   studio_setup_saved = 'Cadrage %s généré : lignes dans la console F8 et dans les logs.',
   web = {
