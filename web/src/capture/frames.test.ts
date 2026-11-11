@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { backgroundSeen, backgroundShares, difference, orderings } from './frames.js'
+import { backgroundSeen, difference, dominant, orderings } from './frames.js'
 
 const SIDE = 64
 const GREEN = [0, 169, 0]
@@ -8,12 +8,24 @@ const SHOWN_GREEN = [75, 140, 75]
 const SHOWN_MAGENTA = [230, 60, 230]
 const SKIN = [200, 180, 170]
 
-const paint = (color: number[], inside?: number[], from = 16): Uint8Array => {
+type Shade = (y: number) => number[]
+
+const flat =
+  (color: number[]): Shade =>
+  () =>
+    color
+
+const shaded =
+  (color: number[]): Shade =>
+  (y) =>
+    color.map((v) => Math.max(0, Math.min(255, v - 60 + ((y * 7) % 120))))
+
+const paint = (background: number[], subject?: Shade, from = 16): Uint8Array => {
   const out = new Uint8Array(SIDE * SIDE * 4)
 
   for (let y = 0; y < SIDE; y += 1) {
     for (let x = 0; x < SIDE; x += 1) {
-      const [r, g, b] = inside && y >= from ? inside : color
+      const [r, g, b] = subject && y >= from ? subject(y) : background
       const p = (y * SIDE + x) * 4
 
       out[p] = r
@@ -34,10 +46,25 @@ describe('difference', () => {
   })
 
   it('counts the sampled pixels that moved', () => {
-    const result = difference(paint([10, 20, 30]), paint([10, 20, 30], [200, 200, 200]))
+    const result = difference(paint([10, 20, 30]), paint([10, 20, 30], flat([200, 200, 200])))
 
     expect(result.moved).toBeGreaterThan(0.2)
     expect(result.mean).toBeGreaterThan(12)
+  })
+})
+
+describe('dominant', () => {
+  it('finds the flat colour that covers most of the picture', () => {
+    const top = dominant(paint(SHOWN_GREEN, shaded(SKIN), 32))
+
+    expect(top.color).toEqual(SHOWN_GREEN)
+    expect(top.share).toBeCloseTo(0.5, 1)
+  })
+
+  it('is not fooled by a large shaded garment', () => {
+    const top = dominant(paint(SHOWN_GREEN, shaded([200, 40, 200]), 24))
+
+    expect(top.color).toEqual(SHOWN_GREEN)
   })
 })
 
@@ -54,31 +81,27 @@ describe('backgroundSeen', () => {
     expect(orderings([24, 26, 30])).toEqual([])
   })
 
-  it('tells the share of the picture showing each background', () => {
-    const shares = backgroundShares(paint(SHOWN_GREEN, SKIN, 32), GREEN, MAGENTA)
-
-    expect(shares.seen).toBeCloseTo(0.5, 1)
-    expect(shares.left).toBe(0)
+  it('accepts the green once it is the background, even dimmed by the game', () => {
+    expect(backgroundSeen(paint(SHOWN_GREEN, shaded(SKIN)), GREEN, MAGENTA)).toBe(true)
   })
 
-  it('accepts the green once the magenta is gone, even dimmed by the game', () => {
-    expect(backgroundSeen(paint(SHOWN_GREEN, SKIN), GREEN, MAGENTA)).toBe(true)
+  it('waits while the previous background still fills the picture', () => {
+    expect(backgroundSeen(paint(SHOWN_MAGENTA, shaded(SKIN)), GREEN, MAGENTA)).toBe(false)
+    expect(backgroundSeen(paint(SHOWN_GREEN, shaded(SKIN)), MAGENTA, GREEN)).toBe(false)
   })
 
-  it('waits while the previous background still shows', () => {
-    expect(backgroundSeen(paint(SHOWN_MAGENTA, SKIN), GREEN, MAGENTA)).toBe(false)
-    expect(backgroundSeen(paint(SHOWN_GREEN, SKIN), MAGENTA, GREEN)).toBe(false)
+  it('accepts a purple garment on the green, and a green one on the magenta', () => {
+    expect(backgroundSeen(paint(SHOWN_GREEN, shaded([200, 40, 200]), 24), GREEN, MAGENTA)).toBe(
+      true,
+    )
+    expect(backgroundSeen(paint(SHOWN_MAGENTA, shaded([40, 160, 40]), 24), MAGENTA, GREEN)).toBe(
+      true,
+    )
   })
 
   it('accepts a close-up that shows no background at all', () => {
-    expect(backgroundSeen(paint(SKIN), GREEN, MAGENTA)).toBe(true)
-    expect(backgroundSeen(paint(SKIN), MAGENTA, GREEN)).toBe(true)
-  })
-
-  it('tolerates a few pixels of the other colour on the subject', () => {
-    const frame = paint(SHOWN_GREEN, SHOWN_MAGENTA, 60)
-
-    expect(backgroundSeen(frame, GREEN, MAGENTA)).toBe(true)
+    expect(backgroundSeen(paint(SKIN, shaded(SKIN), 0), GREEN, MAGENTA)).toBe(true)
+    expect(backgroundSeen(paint(SKIN, shaded(SKIN), 0), MAGENTA, GREEN)).toBe(true)
   })
 
   it('accepts any picture when the expected colour has no dominant channel', () => {
