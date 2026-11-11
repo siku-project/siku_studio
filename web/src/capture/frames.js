@@ -2,8 +2,8 @@ const STRIDE = 64 * 4
 const MOVED_PIXEL = 6
 const EXPECTED_GAP = 64
 const SEEN_GAP = 24
-const GONE_SHARE = 0.002
-const GONE_RATIO = 4
+const BUCKET_SHIFT = 3
+const BACKGROUND_SHARE = 0.15
 
 export function difference(before, after) {
   let total = 0
@@ -42,9 +42,13 @@ export function orderings(expected) {
   return pairs
 }
 
-function looksLike(pixels, p, pairs) {
+export function looksLike(color, pairs) {
+  if (pairs.length === 0) {
+    return false
+  }
+
   for (const [i, j] of pairs) {
-    if (pixels[p + i] <= pixels[p + j] + SEEN_GAP) {
+    if (color[i] <= color[j] + SEEN_GAP) {
       return false
     }
   }
@@ -52,28 +56,54 @@ function looksLike(pixels, p, pairs) {
   return true
 }
 
-export function backgroundShares(pixels, expected, other) {
-  const wanted = orderings(expected)
-  const unwanted = Array.isArray(other) ? orderings(other) : []
-  let seen = 0
-  let left = 0
+export function dominant(pixels) {
+  const buckets = new Map()
   let n = 0
 
   for (let p = 0; p < pixels.length; p += STRIDE) {
-    if (wanted.length > 0 && looksLike(pixels, p, wanted)) {
-      seen += 1
-    } else if (unwanted.length > 0 && looksLike(pixels, p, unwanted)) {
-      left += 1
+    const key =
+      ((pixels[p] >> BUCKET_SHIFT) << 10) |
+      ((pixels[p + 1] >> BUCKET_SHIFT) << 5) |
+      (pixels[p + 2] >> BUCKET_SHIFT)
+    let bucket = buckets.get(key)
+
+    if (!bucket) {
+      bucket = { count: 0, sum: [0, 0, 0] }
+      buckets.set(key, bucket)
     }
 
+    bucket.count += 1
+    bucket.sum[0] += pixels[p]
+    bucket.sum[1] += pixels[p + 1]
+    bucket.sum[2] += pixels[p + 2]
     n += 1
   }
 
-  return { seen: seen / n, left: left / n }
+  let best = null
+
+  for (const bucket of buckets.values()) {
+    if (!best || bucket.count > best.count) {
+      best = bucket
+    }
+  }
+
+  if (!best) {
+    return { color: [0, 0, 0], share: 0 }
+  }
+
+  return { color: best.sum.map((v) => Math.round(v / best.count)), share: best.count / n }
 }
 
-export function backgroundSeen(pixels, expected, other) {
-  const { seen, left } = backgroundShares(pixels, expected, other)
+export function backgroundSeen(pixels, expected, previous) {
+  const top = dominant(pixels)
 
-  return left <= Math.max(GONE_SHARE, seen / GONE_RATIO)
+  if (top.share < BACKGROUND_SHARE) {
+    return true
+  }
+
+  if (looksLike(top.color, orderings(expected))) {
+    return true
+  }
+
+  return !looksLike(top.color, orderings(previous || []))
 }
