@@ -324,7 +324,10 @@ function Bench.probe()
     Scene.setBackground('green')
     settle()
 
-    local snapped <const> = Nui.request('snap', { background = StudioConfig.scene.backgrounds.green }, PROBE_TIMEOUT_MS)
+    local snapped <const> = Nui.request('snap', {
+      background = StudioConfig.scene.backgrounds.green,
+      previous = StudioConfig.scene.backgrounds.magenta,
+    }, PROBE_TIMEOUT_MS)
 
     if not snapped.ok then
       error(('probe snap failed in the capture page: %s'):format(tostring(snapped.error)), 0)
@@ -342,6 +345,7 @@ function Bench.probe()
     key = key,
     first = first,
     background = first and StudioConfig.scene.backgrounds.magenta or nil,
+    previous = first and StudioConfig.scene.backgrounds.green or nil,
     labels = { 'green', 'magenta' },
   }, PROBE_TIMEOUT_MS)
 
