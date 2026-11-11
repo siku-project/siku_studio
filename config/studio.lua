@@ -207,7 +207,8 @@ StudioConfig = {
     changeTimeoutMs = 5000,
 
     --- Photos that may fail one after the other (item never loaded, page
-    --- not answering) before the session gives up for good.
+    --- not answering) before the target is given up (`studio.target_skipped`)
+    --- and the capture moves on to the next one.
     failuresInARow = 10,
 
     --- Everything photographed, in order. id: how the target is named in
@@ -277,10 +278,10 @@ StudioConfig = {
 
     --- Frames rendered after a change of subject or of background before
     --- the page starts reading the screen. The page then waits until the
-    --- border of the picture shows the background asked (up to ninety
-    --- frames, the photo is skipped past that) and until three consecutive
-    --- frames match (up to thirty), so the game has shown the outfit and
-    --- the background and the exposure has caught up.
+    --- previous background has left the picture (up to ninety frames, the
+    --- photo is skipped past that) and until three consecutive frames
+    --- match (up to thirty), so the game has shown the outfit and the
+    --- background and the exposure has caught up.
     settleFrames = 2,
 
     --- How the subject is cut from the background. 'double' photographs

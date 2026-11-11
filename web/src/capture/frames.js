@@ -2,11 +2,8 @@ const STRIDE = 64 * 4
 const MOVED_PIXEL = 6
 const EXPECTED_GAP = 64
 const SEEN_GAP = 24
-const SEEN_SHARE = 0.7
-const EDGE = 2
-const TOP_POINTS = 8
-const SIDE_POINTS = 4
-const SIDE_DEPTH = 0.6
+const GONE_SHARE = 0.002
+const GONE_RATIO = 4
 
 export function difference(before, after) {
   let total = 0
@@ -31,22 +28,6 @@ export function difference(before, after) {
   return { mean: total / n, moved: moved / n }
 }
 
-export function borderPoints(width, height) {
-  const points = []
-
-  for (let i = 0; i < TOP_POINTS; i += 1) {
-    points.push([Math.round(((i + 0.5) * width) / TOP_POINTS), EDGE])
-  }
-
-  for (let i = 0; i < SIDE_POINTS; i += 1) {
-    const y = Math.round(((i + 0.5) * height * SIDE_DEPTH) / SIDE_POINTS)
-
-    points.push([EDGE, y], [width - 1 - EDGE, y])
-  }
-
-  return points
-}
-
 export function orderings(expected) {
   const pairs = []
 
@@ -61,31 +42,38 @@ export function orderings(expected) {
   return pairs
 }
 
-export function backgroundSeen(pixels, width, height, expected) {
-  const pairs = orderings(expected)
-
-  if (pairs.length === 0) {
-    return true
+function looksLike(pixels, p, pairs) {
+  for (const [i, j] of pairs) {
+    if (pixels[p + i] <= pixels[p + j] + SEEN_GAP) {
+      return false
+    }
   }
 
-  const points = borderPoints(width, height)
+  return true
+}
+
+export function backgroundShares(pixels, expected, other) {
+  const wanted = orderings(expected)
+  const unwanted = Array.isArray(other) ? orderings(other) : []
   let seen = 0
+  let left = 0
+  let n = 0
 
-  for (const [x, y] of points) {
-    const p = (y * width + x) * 4
-    let matches = true
-
-    for (const [i, j] of pairs) {
-      if (pixels[p + i] <= pixels[p + j] + SEEN_GAP) {
-        matches = false
-        break
-      }
-    }
-
-    if (matches) {
+  for (let p = 0; p < pixels.length; p += STRIDE) {
+    if (wanted.length > 0 && looksLike(pixels, p, wanted)) {
       seen += 1
+    } else if (unwanted.length > 0 && looksLike(pixels, p, unwanted)) {
+      left += 1
     }
+
+    n += 1
   }
 
-  return seen / points.length >= SEEN_SHARE
+  return { seen: seen / n, left: left / n }
+}
+
+export function backgroundSeen(pixels, expected, other) {
+  const { seen, left } = backgroundShares(pixels, expected, other)
+
+  return left <= Math.max(GONE_SHARE, seen / GONE_RATIO)
 }
