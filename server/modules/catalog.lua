@@ -60,6 +60,13 @@ function Studio.catalogAccepts(folder)
   return modelOf(folder) ~= nil
 end
 
+--- The model a folder name (`male`, `female`) stands for.
+---@param folder string
+---@return string|nil model
+function Studio.modelOf(folder)
+  return modelOf(folder)
+end
+
 --- The target a catalog photo belongs to, from its file name
 --- (`hair_12_0.webp` → `hair`, `beard_7.webp` → `beard`), nil when no
 --- target claims it.
