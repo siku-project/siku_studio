@@ -201,10 +201,19 @@ StudioConfig = {
     --- upload queue to drain a little.
     backlog = 8,
 
-    --- Longest wait (ms) for an item to finish loading before its photo
-    --- is given up. A given-up photo is logged (`studio.photo_skipped`)
-    --- and the capture moves on to the next item.
+    --- Longest wait (ms) for the game to load what an item needs after it
+    --- is put on the subject (HaveAllStreamingRequestsCompleted) before
+    --- its photo is given up. A given-up photo is logged
+    --- (`studio.photo_skipped`) and the capture moves on to the next item.
     changeTimeoutMs = 5000,
+
+    --- Longest wait (ms), after a given-up photo, for the game to finish
+    --- what it was asked before the next item is asked, so the streaming
+    --- of the client drains instead of piling up. When it never does
+    --- (`studio.streaming_stalled`) the subject is recreated and the wait
+    --- runs once more; still nothing and the capture stops with its
+    --- summary, the client has to reconnect.
+    drainTimeoutMs = 120000,
 
     --- Photos that may fail one after the other (item never loaded, page
     --- not answering) before the subject is recreated (`studio.subject_recreated`);

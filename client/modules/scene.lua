@@ -45,9 +45,11 @@ local function drawQuad(a, b, c, d, color)
   DrawPoly(d[1], d[2], d[3], c[1], c[2], c[3], a[1], a[2], a[3], r, g, bl, 255)
 end
 
---- Builds the studio: focus in the sky, frozen clock and weather, a
---- scripted camera, and a thread drawing the cube and the light while
---- blocking the player's controls. Escape asks the session to stop.
+--- Builds the studio: focus in the sky, no budget left to the ambient
+--- population so the streaming memory goes to the subject, frozen clock
+--- and weather, a scripted camera, and a thread drawing the cube and the
+--- light while blocking the player's controls. Escape asks the session
+--- to stop.
 ---@param options table|nil { onAbort?: fun() }
 function Scene.enter(options)
   if state then
@@ -65,6 +67,10 @@ function Scene.enter(options)
 
   FreezeEntityPosition(PlayerPedId(), true)
   SetFocusPosAndVel(config.origin.x, config.origin.y, config.origin.z, 0.0, 0.0, 0.0)
+  SetPedPopulationBudget(0)
+  SetVehiclePopulationBudget(0)
+  SetReducePedModelBudget(true)
+  SetReduceVehicleModelBudget(true)
   NetworkOverrideClockTime(config.time.hour, config.time.minute, 0)
   SetOverrideWeather(config.weather)
   SetWeatherTypeNowPersist(config.weather)
@@ -269,6 +275,10 @@ function Scene.leave()
   end
 
   ClearFocus()
+  SetPedPopulationBudget(3)
+  SetVehiclePopulationBudget(3)
+  SetReducePedModelBudget(false)
+  SetReduceVehicleModelBudget(false)
   FreezeEntityPosition(PlayerPedId(), false)
   NetworkClearClockTimeOverride()
   ClearOverrideWeather()
