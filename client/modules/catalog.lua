@@ -67,6 +67,12 @@ local function targetsFor(job)
     return list
   end
 
+  for i = 1, #all do
+    if all[i].name == job.target then
+      return { all[i] }
+    end
+  end
+
   return { targetById(job.target) or error(('unknown catalog target %s'):format(tostring(job.target)), 0) }
 end
 
