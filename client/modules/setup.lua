@@ -208,6 +208,7 @@ local function snippet()
   local props <const> = sortedKeys(state.hiddenProps)
   local fields <const> = {
     ('id = %s'):format(quote(target.id)),
+    ('name = %s'):format(quote(target.name)),
     ('kind = %s'):format(quote(target.kind)),
   }
 
